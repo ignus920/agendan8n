@@ -26,7 +26,7 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
         name: '',
         template_name: 'promo_recompra_v2',
         template_params: { discount: '10%', product: 'Servicio VIP' },
-        segment_filters: { funnel_stage: '', interest_level: '', tag: '' },
+        segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '' },
         scheduled_at: '',
         daily_limit: 100,
     });
@@ -45,7 +45,7 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
             name: campaign.name || '',
             template_name: campaign.template_name || '',
             template_params: campaign.template_params || {},
-            segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '' },
+            segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '' },
             scheduled_at: campaign.scheduled_at ? campaign.scheduled_at.replace('.000000Z', '').slice(0, 16) : '',
             daily_limit: campaign.daily_limit || 100,
         });
@@ -99,6 +99,8 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                 const tagsArr = Array.isArray(contact.tags) ? contact.tags : [];
                 if (!tagsArr.some(t => t.toLowerCase().includes(filters.tag.toLowerCase()))) return false;
             }
+            if (filters.min_score !== undefined && filters.min_score !== '' && contact.lead_score < parseInt(filters.min_score)) return false;
+            if (filters.max_score !== undefined && filters.max_score !== '' && contact.lead_score > parseInt(filters.max_score)) return false;
             return true;
         }).length;
     };
@@ -264,6 +266,16 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                                         {campaign.segment_filters.tag && (
                                                             <span className="text-[10px] bg-slate-100 text-slate-500 border border-slate-200 px-1.5 py-0.5 rounded-md font-semibold">
                                                                 Tag: {campaign.segment_filters.tag}
+                                                            </span>
+                                                        )}
+                                                        {campaign.segment_filters.min_score !== undefined && campaign.segment_filters.min_score !== '' && (
+                                                            <span className="text-[10px] bg-emerald-50 text-emerald-600 border border-emerald-150 px-1.5 py-0.5 rounded-md font-semibold">
+                                                                Score Min: {campaign.segment_filters.min_score}
+                                                            </span>
+                                                        )}
+                                                        {campaign.segment_filters.max_score !== undefined && campaign.segment_filters.max_score !== '' && (
+                                                            <span className="text-[10px] bg-red-50 text-red-605 border border-red-150 px-1.5 py-0.5 rounded-md font-semibold">
+                                                                Score Max: {campaign.segment_filters.max_score}
                                                             </span>
                                                         )}
                                                     </div>
@@ -484,6 +496,31 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                                     value={data.segment_filters.tag || ''}
                                                     onChange={e => setData('segment_filters', { ...data.segment_filters, tag: e.target.value })}
                                                     placeholder="ej: vip"
+                                                    className="block w-full px-2 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mínimo Score</label>
+                                                <input
+                                                    type="number"
+                                                    value={data.segment_filters.min_score || ''}
+                                                    onChange={e => setData('segment_filters', { ...data.segment_filters, min_score: e.target.value })}
+                                                    placeholder="Ej: 50"
+                                                    min="0"
+                                                    className="block w-full px-2 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Máximo Score</label>
+                                                <input
+                                                    type="number"
+                                                    value={data.segment_filters.max_score || ''}
+                                                    onChange={e => setData('segment_filters', { ...data.segment_filters, max_score: e.target.value })}
+                                                    placeholder="Ej: 100"
+                                                    min="0"
                                                     className="block w-full px-2 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
                                                 />
                                             </div>

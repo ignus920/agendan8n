@@ -93,6 +93,12 @@ class CampaignController extends Controller
         if (!empty($filters['tag'])) {
             $query->whereJsonContains('tags', $filters['tag']);
         }
+        if (isset($filters['min_score']) && $filters['min_score'] !== '') {
+            $query->where('lead_score', '>=', (int) $filters['min_score']);
+        }
+        if (isset($filters['max_score']) && $filters['max_score'] !== '') {
+            $query->where('lead_score', '<=', (int) $filters['max_score']);
+        }
 
         $contacts = $query->get();
 
