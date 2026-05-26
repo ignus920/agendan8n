@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { 
     Cpu, 
     Zap, 
@@ -18,7 +18,8 @@ import {
     Eye,
     Code,
     Sparkles,
-    Flame
+    Flame,
+    Trash2
 } from 'lucide-react';
 
 export default function AutomationsIndex({ automations, scoringRules }) {
@@ -27,6 +28,18 @@ export default function AutomationsIndex({ automations, scoringRules }) {
     const [isEditingJson, setIsEditingJson] = useState(false);
     const [jsonInput, setJsonInput] = useState('');
     const [jsonError, setJsonError] = useState(null);
+
+    // Create Modal state
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [createType, setCreateType] = useState('flow'); // flow, scoring
+    const [createName, setCreateName] = useState('');
+    const [createEvent, setCreateEvent] = useState('message_received');
+    const [createConditions, setCreateConditions] = useState('{\n    "contact.funnel_stage": "new"\n}');
+    const [createActions, setCreateActions] = useState('[\n    {\n        "type": "send_whatsapp",\n        "params": {\n            "message": "¡Hola! ¿Cómo podemos ayudarte hoy?"\n        }\n    }\n]');
+    const [createDelta, setCreateDelta] = useState(10);
+    const [createPriority, setCreatePriority] = useState(1);
+    const [createCooldown, setCreateCooldown] = useState(1);
+    const [createError, setCreateError] = useState(null);
 
     const eventNames = {
         contact_created: 'Contacto Creado',
@@ -79,16 +92,112 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                 throw new Error("Las acciones deben ser una lista (array) de objetos de acción.");
             }
             
-            // Simulación de guardado exitoso
-            setSelectedAutomation({
-                ...selectedAutomation,
-                actions: parsed
+            router.put(route('settings.automations.update', selectedAutomation.id), {
+                rule_type: 'flow',
+                name: selectedAutomation.name,
+                event_type: selectedAutomation.event_type,
+                conditions: selectedAutomation.conditions,
+                actions: parsed,
+                is_active: selectedAutomation.is_active,
+                priority: selectedAutomation.priority,
+                cooldown_hours: selectedAutomation.cooldown_hours,
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsEditingJson(false);
+                    setSelectedAutomation(prev => ({ ...prev, actions: parsed }));
+                }
             });
-            setIsEditingJson(false);
-            setJsonError(null);
-            alert("Acciones JSON validadas y actualizadas localmente para demostración.");
         } catch (e) {
             setJsonError(e.message);
+        }
+    };
+
+    const handleToggleActive = (item, type) => {
+        const url = route('settings.automations.update', item.id);
+        const payload = type === 'scoring' ? {
+            rule_type: 'scoring',
+            name: item.name,
+            event_type: item.event_type,
+            condition: item.condition,
+            score_delta: item.score_delta,
+            is_active: !item.is_active
+        } : {
+            rule_type: 'flow',
+            name: item.name,
+            event_type: item.event_type,
+            conditions: item.conditions,
+            actions: item.actions,
+            is_active: !item.is_active,
+            priority: item.priority,
+            cooldown_hours: item.cooldown_hours
+        };
+
+        router.put(url, payload, { preserveScroll: true });
+    };
+
+    const handleDelete = (id, type) => {
+        if (confirm('¿Estás seguro de eliminar esta regla?')) {
+            router.delete(route('settings.automations.destroy', id), {
+                data: { rule_type: type },
+                preserveScroll: true,
+                onSuccess: () => {
+                    if (selectedAutomation?.id === id) {
+                        setSelectedAutomation(null);
+                    }
+                }
+            });
+        }
+    };
+
+    const handleCreateRule = (e) => {
+        e.preventDefault();
+        setCreateError(null);
+
+        try {
+            let payload = {
+                rule_type: createType,
+                name: createName,
+                event_type: createEvent,
+                is_active: true
+            };
+
+            if (createType === 'scoring') {
+                let parsedCond = {};
+                if (createConditions.trim()) {
+                    parsedCond = JSON.parse(createConditions);
+                }
+                payload.condition = parsedCond;
+                payload.score_delta = parseInt(createDelta);
+            } else {
+                let parsedCond = {};
+                if (createConditions.trim()) {
+                    parsedCond = JSON.parse(createConditions);
+                }
+                const parsedActions = JSON.parse(createActions);
+                if (!Array.isArray(parsedActions)) {
+                    throw new Error("Las acciones deben ser un array JSON");
+                }
+                payload.conditions = parsedCond;
+                payload.actions = parsedActions;
+                payload.priority = parseInt(createPriority);
+                payload.cooldown_hours = parseInt(createCooldown);
+            }
+
+            router.post(route('settings.automations.store'), payload, {
+                onSuccess: () => {
+                    setShowCreateModal(false);
+                    // reset form
+                    setCreateName('');
+                    setCreateConditions('{\n    "contact.funnel_stage": "new"\n}');
+                    setCreateActions('[\n    {\n        "type": "send_whatsapp",\n        "params": {\n            "message": "¡Hola! ¿Cómo podemos ayudarte hoy?"\n        }\n    }\n]');
+                },
+                onError: (errors) => {
+                    setCreateError(Object.values(errors).join(', '));
+                }
+            });
+        } catch (err) {
+            setCreateError(err.message);
         }
     };
 
@@ -101,6 +210,15 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                             Motor de Automatización (Automation Engine)
                         </h2>
                         <p className="text-xs text-slate-500 mt-0.5">Controla las reglas basadas en eventos, scoring de contactos y flujos de n8n.</p>
+                    </div>
+                    <div>
+                        <button
+                            onClick={() => setShowCreateModal(true)}
+                            className="flex items-center gap-1.5 px-4 py-2.5 bg-brand-teal hover:bg-brand-teal/90 text-white font-extrabold text-xs rounded-xl shadow-sm transition-all"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Crear Regla
+                        </button>
                     </div>
                 </div>
             }
@@ -155,13 +273,29 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                             <div>
                                                 <div className="flex items-center gap-2.5">
                                                     <h3 className="font-bold text-sm text-slate-800">{flow.name}</h3>
-                                                    <span className={`text-[9px] px-2 py-0.5 rounded-full font-bold border ${
-                                                        flow.is_active 
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                                            : 'bg-slate-100 text-slate-450 border-slate-200'
-                                                    }`}>
+                                                    <button 
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggleActive(flow, 'flow');
+                                                        }}
+                                                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
+                                                            flow.is_active 
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
+                                                                : 'bg-slate-100 text-slate-450 border-slate-200 hover:bg-slate-200'
+                                                        }`}
+                                                    >
                                                         {flow.is_active ? 'Activo' : 'Inactivo'}
-                                                    </span>
+                                                    </button>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleDelete(flow.id, 'flow');
+                                                        }}
+                                                        className="text-slate-400 hover:text-red-650 p-1 transition-colors"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
                                                 </div>
                                                 <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
                                                     <span className="font-semibold">Disparador:</span>
@@ -251,10 +385,24 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                                         {isPositive ? `+${rule.score_delta}` : rule.score_delta} pts
                                                     </span>
                                                 </td>
-                                                <td className="px-6 py-4 text-right">
-                                                    <span className={`inline-block w-2.5 h-2.5 rounded-full ${
-                                                        rule.is_active ? 'bg-emerald-550 shadow-[0_0_8px_rgba(16,185,129,0.3)]' : 'bg-slate-300'
-                                                    }`}></span>
+                                                <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
+                                                    <button
+                                                        onClick={() => handleToggleActive(rule, 'scoring')}
+                                                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
+                                                            rule.is_active 
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 hover:bg-emerald-100' 
+                                                                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
+                                                        }`}
+                                                    >
+                                                        {rule.is_active ? 'Activo' : 'Inactivo'}
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(rule.id, 'scoring')}
+                                                        className="text-slate-400 hover:text-red-650 p-1 transition-colors"
+                                                        title="Eliminar"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
                                                 </td>
                                             </tr>
                                         );
@@ -374,6 +522,171 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                     )}
                 </div>
             </div>
+
+            {/* Create Rule Modal */}
+            {showCreateModal && (
+                <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4 z-50">
+                    <div className="bg-white rounded-2xl border border-slate-200 shadow-xl max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto">
+                        <button 
+                            onClick={() => setShowCreateModal(false)}
+                            className="absolute top-4 right-4 text-slate-450 hover:text-slate-700 text-xl font-bold"
+                        >
+                            &times;
+                        </button>
+                        <h3 className="text-base font-bold text-slate-800 mb-4 flex items-center gap-2">
+                            <Plus className="h-5 w-5 text-brand-teal" />
+                            Crear Nueva Regla de Automatización
+                        </h3>
+
+                        <form onSubmit={handleCreateRule} className="space-y-4 text-xs font-semibold text-slate-650">
+                            <div>
+                                <label className="block text-slate-555 mb-1">Tipo de Regla</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center gap-2 cursor-pointer font-bold">
+                                        <input 
+                                            type="radio" 
+                                            name="create_type" 
+                                            value="flow" 
+                                            checked={createType === 'flow'}
+                                            onChange={() => setCreateType('flow')}
+                                            className="text-brand-teal focus:ring-brand-teal"
+                                        />
+                                        Flujo de Automatización (Acciones JSON)
+                                    </label>
+                                    <label className="flex items-center gap-2 cursor-pointer font-bold">
+                                        <input 
+                                            type="radio" 
+                                            name="create_type" 
+                                            value="scoring" 
+                                            checked={createType === 'scoring'}
+                                            onChange={() => setCreateType('scoring')}
+                                            className="text-brand-teal focus:ring-brand-teal"
+                                        />
+                                        Regla de Lead Scoring (+/- Puntos)
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-slate-555 mb-1">Nombre de la Regla</label>
+                                <input 
+                                    type="text" 
+                                    value={createName}
+                                    onChange={(e) => setCreateName(e.target.value)}
+                                    placeholder="Ej: Mensaje de Bienvenida"
+                                    className="block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal text-xs"
+                                    required
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-slate-555 mb-1">Evento Detonante</label>
+                                    <select
+                                        value={createEvent}
+                                        onChange={(e) => setCreateEvent(e.target.value)}
+                                        className="block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal text-xs font-semibold text-slate-700"
+                                    >
+                                        {Object.entries(eventNames).map(([key, name]) => (
+                                            <option key={key} value={key}>{name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {createType === 'flow' ? (
+                                    <>
+                                        <div>
+                                            <label className="block text-slate-555 mb-1">Prioridad (Orden)</label>
+                                            <input 
+                                                type="number" 
+                                                value={createPriority}
+                                                onChange={(e) => setCreatePriority(e.target.value)}
+                                                className="block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal text-xs"
+                                                required
+                                                min="1"
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div>
+                                        <label className="block text-slate-555 mb-1">Score Delta (Puntos)</label>
+                                        <input 
+                                            type="number" 
+                                            value={createDelta}
+                                            onChange={(e) => setCreateDelta(e.target.value)}
+                                            className="block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal text-xs"
+                                            required
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            {createType === 'flow' && (
+                                <div>
+                                    <label className="block text-slate-555 mb-1">Cooldown (Horas)</label>
+                                    <input 
+                                        type="number" 
+                                        value={createCooldown}
+                                        onChange={(e) => setCreateCooldown(e.target.value)}
+                                        className="block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal text-xs"
+                                        required
+                                        min="0"
+                                    />
+                                    <p className="text-[10px] text-slate-400 mt-0.5">Tiempo de espera para el mismo contacto antes de reactivar.</p>
+                                </div>
+                            )}
+
+                            <div>
+                                <label className="block text-slate-555 mb-1">Condiciones (Filtros JSON)</label>
+                                <textarea
+                                    value={createConditions}
+                                    onChange={(e) => setCreateConditions(e.target.value)}
+                                    rows="3"
+                                    placeholder='Ej: { "contact.funnel_stage": "new" }'
+                                    className="font-mono text-[11px] block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal"
+                                />
+                                <p className="text-[10px] text-slate-400 mt-0.5">Filtros que el contacto o payload deben cumplir. Dejar vacío {} para ejecutar siempre.</p>
+                            </div>
+
+                            {createType === 'flow' && (
+                                <div>
+                                    <label className="block text-slate-555 mb-1">Acciones (Lista de Acciones JSON)</label>
+                                    <textarea
+                                        value={createActions}
+                                        onChange={(e) => setCreateActions(e.target.value)}
+                                        rows="5"
+                                        className="font-mono text-[11px] block w-full p-2 border border-slate-250 rounded-xl focus:ring-brand-teal focus:border-brand-teal"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            {createError && (
+                                <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-[11px] flex items-start gap-2">
+                                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                    <span className="font-mono">{createError}</span>
+                                </div>
+                            )}
+
+                            <div className="flex gap-3 justify-end pt-2 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCreateModal(false)}
+                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl transition-all"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    className="px-4 py-2 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-xl transition-all shadow-sm font-bold"
+                                >
+                                    Crear Regla
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </AuthenticatedLayout>
     );
 }

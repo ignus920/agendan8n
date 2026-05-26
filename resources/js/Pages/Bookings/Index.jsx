@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import FullCalendar from '@fullcalendar/react';
@@ -29,6 +29,14 @@ export default function BookingsIndex({ bookings, resources, products }) {
     const [search, setSearch] = useState('');
     const [viewMode, setViewMode] = useState('calendar'); // calendar, list
     const [selectedEvent, setSelectedEvent] = useState(null);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            router.reload({ only: ['bookings'], preserveState: true });
+        }, 20000);
+
+        return () => clearInterval(interval);
+    }, []);
 
     const statusColors = {
         pending: 'bg-amber-50 text-amber-700 border-amber-250',

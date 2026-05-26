@@ -13,6 +13,11 @@ class DashboardController extends Controller
 {
     public function index()
     {
+        // Super admin without impersonation → redirect to their panel
+        if (auth()->user()->isSuperAdmin() && !session('impersonated_tenant_id')) {
+            return redirect()->route('ticsia.tenants.index');
+        }
+
         // Total contacts
         $totalContacts = Contact::count();
 

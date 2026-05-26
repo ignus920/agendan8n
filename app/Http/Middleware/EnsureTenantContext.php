@@ -18,7 +18,13 @@ class EnsureTenantContext
     {
         $tenantId = $this->resolveTenantId($request);
 
+        // Super admin without impersonation: allow through with no tenant scope
         if (!$tenantId) {
+            $user = $request->user();
+            if ($user && $user->isSuperAdmin()) {
+                return $next($request);
+            }
+
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'Tenant context required'], 403);
             }
@@ -46,8 +52,16 @@ class EnsureTenantContext
 
     protected function resolveTenantId(Request $request): ?string
     {
-        // 1. From authenticated user
+        // 1. From authenticated user (check for impersonation first)
         if ($user = $request->user()) {
+            // Super admin: check for impersonation session
+            if ($user->isSuperAdmin()) {
+                if ($request->hasSession() && $impersonated = $request->session()->get('impersonated_tenant_id')) {
+                    return $impersonated;
+                }
+                // Super admin without impersonation: allow through (null means global/no-scope)
+                return null;
+            }
             return $user->tenant_id;
         }
 

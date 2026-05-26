@@ -33,6 +33,11 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        // Super admin goes to their platform panel, not the business dashboard
+        if (Auth::user()->isSuperAdmin()) {
+            return redirect()->route('ticsia.tenants.index');
+        }
+
         return redirect()->intended(route('dashboard', absolute: false));
     }
 
