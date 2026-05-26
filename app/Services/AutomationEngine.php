@@ -194,10 +194,42 @@ class AutomationEngine
         }
 
         if ($message) {
+            $message = $this->parsePlaceholders($message, $contact);
             return $whatsmark->sendMessage($contact->whatsapp_phone, $message);
         }
 
         return null;
+    }
+
+    /**
+     * Parse dynamic placeholders in WhatsApp message body.
+     */
+    protected function parsePlaceholders(string $message, Contact $contact): string
+    {
+        // 1. Replace contact placeholders
+        $message = str_replace('{contact.name}', $contact->name ?? 'Cliente', $message);
+        $message = str_replace('{contact.phone}', $contact->whatsapp_phone, $message);
+        $message = str_replace('{contact.lead_score}', $contact->lead_score, $message);
+
+        // 2. Replace {products_list} placeholder with dynamic DB products
+        if (str_contains($message, '{products_list}')) {
+            $products = \App\Models\Product::where('tenant_id', $contact->tenant_id)
+                ->where('status', 'active')
+                ->get();
+
+            $list = "";
+            if ($products->isEmpty()) {
+                $list = "No tenemos servicios disponibles en este momento.";
+            } else {
+                foreach ($products as $product) {
+                    $formattedPrice = number_format($product->price, 0, ',', '.');
+                    $list .= "• *{$product->name}*: \${$formattedPrice} USD\n_{$product->description}_\n\n";
+                }
+            }
+            $message = str_replace('{products_list}', trim($list), $message);
+        }
+
+        return $message;
     }
 
     protected function actionUpdateScore(array $params, ?Contact $contact): void
