@@ -1,0 +1,58 @@
+{
+    "name": "moe-mizrak/laravel-openrouter",
+    "description": "Laravel package for OpenRouter (A unified interface for LLMs)",
+    "keywords": [
+        "Moe Mizrak",
+        "laravel",
+        "laravel-openrouter",
+        "OpenRouter",
+        "LLMs",
+        "ai"
+    ],
+    "type": "package",
+    "homepage": "https://github.com/moe-mizrak/laravel-openrouter",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Moe Mizrak"
+        }
+    ],
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "spatie/laravel-data": "^4.13",
+        "guzzlehttp/guzzle": "^7.9",
+        "caseyamcl/guzzle_retry_middleware": "^2.12"
+    },
+    "require-dev": {
+        "mockery/mockery": "^1.6",
+        "orchestra/testbench": "^9.9",
+        "phpunit/phpunit": "^11.5",
+        "laravel/pint": "^1.29"
+    },
+    "autoload": {
+        "psr-4": {
+            "MoeMizrak\\LaravelOpenrouter\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "MoeMizrak\\LaravelOpenrouter\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "MoeMizrak\\LaravelOpenrouter\\OpenRouterServiceProvider"
+            ],
+            "aliases": {
+                "LaravelOpenrouter": "MoeMizrak\\LaravelOpenrouter\\Facades\\LaravelOpenRouter"
+            }
+        }
+    },
+    "scripts": {
+        "test": "phpunit"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
