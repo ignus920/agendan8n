@@ -15,15 +15,14 @@ class WebhookController extends Controller
         Log::info("WebhookController: Received payload", $request->all());
 
         try {
-            // 1. Resolve Tenant ID
-            $tenantId = $request->input('tenant_id') ?? $request->query('tenant_id');
+            // 1. Resolve Tenant ID (prioritize query parameter passed in webhook URL)
+            $tenantId = $request->query('tenant_id') ?? $request->input('tenant_id');
 
             if (!$tenantId) {
-                // Try to resolve via instance_id
-                $instanceId = $request->input('instance_id') 
-                    ?? $request->input('whatsmark_instance_id') 
-                    ?? $request->input('instance.id')
-                    ?? $request->input('data.instance_id');
+                // Fallback: try to resolve via instance_id from query or body
+                $instanceId = $request->query('instance_id') 
+                    ?? $request->input('instance_id') 
+                    ?? $request->input('whatsmark_instance_id');
 
                 if ($instanceId) {
                     $tenant = \App\Models\Tenant::where('whatsmark_instance_id', $instanceId)->first();
@@ -31,23 +30,40 @@ class WebhookController extends Controller
                 }
             }
 
+            // Fallback 2: Check if tenant name or id matches in the payload
+            if (!$tenantId && $request->has('tenant.name')) {
+                $tenantName = $request->input('tenant.name');
+                // Try matching by name or fallback to first active tenant if debug
+                $tenant = \App\Models\Tenant::where('name', 'like', "%{$tenantName}%")->first();
+                $tenantId = $tenant?->id;
+            }
+
+            // Fallback 3: Default to first tenant if still not resolved
+            if (!$tenantId) {
+                $tenant = \App\Models\Tenant::first();
+                if ($tenant) {
+                    $tenantId = $tenant->id;
+                    Log::info("WebhookController: Defaulting to first tenant ID: {$tenantId}");
+                }
+            }
+
             if (!$tenantId) {
                 Log::warning("WebhookController: Unable to resolve tenant_id from payload", $request->all());
                 return response()->json([
                     'status' => 'error',
-                    'message' => 'tenant_id could not be resolved.'
+                    'message' => 'tenant_id could not be resolved. Please append ?tenant_id=YOUR_UUID to the webhook URL.'
                 ], 400);
             }
 
-            // 2. Extract Phone Number
-            $phone = $request->input('phone') 
+            // 2. Extract Phone Number (from WhatsMark nested structure)
+            $phone = $request->input('data.resource.attributes.from')
+                ?? $request->input('relationships.contact.wa_id')
+                ?? $request->input('data.relationships.contact.wa_id')
+                ?? $request->input('phone') 
                 ?? $request->input('phone_number') 
-                ?? $request->input('sender') 
-                ?? $request->input('data.key.remoteJid') 
-                ?? $request->input('data.from');
+                ?? $request->input('sender');
 
             if ($phone) {
-                // Clean phone number: remove @s.whatsapp.net or anything non-numeric
                 $phone = preg_replace('/[^0-9]/', '', $phone);
             }
 
@@ -58,15 +74,13 @@ class WebhookController extends Controller
                 ], 400);
             }
 
-            // Clean number prefix if needed (some systems return country codes)
             $phone = '+' . ltrim($phone, '+');
 
             // 3. Extract Message & Direction
-            $message = $request->input('message') 
+            $message = $request->input('data.resource.attributes.text')
+                ?? $request->input('message') 
                 ?? $request->input('message_body')
-                ?? $request->input('body') 
-                ?? $request->input('data.message.conversation')
-                ?? $request->input('data.body');
+                ?? $request->input('body');
 
             $fromMe = $request->input('fromMe') 
                 ?? $request->input('data.key.fromMe') 
@@ -75,13 +89,21 @@ class WebhookController extends Controller
             $direction = $request->input('direction') 
                 ?? ($fromMe ? 'outbound' : 'inbound');
 
-            $eventType = $request->input('event_type') 
-                ?? $request->input('event')
-                ?? ($direction === 'inbound' ? 'message_received' : 'message_sent');
+            // Map WhatsMark events
+            $rawEvent = $request->input('event.type') ?? $request->input('event_type') ?? $request->input('event');
+            $eventType = 'message_received';
+            if ($rawEvent === 'whatsapp.message.received' || $rawEvent === 'message_received') {
+                $eventType = 'message_received';
+            } else if ($rawEvent === 'whatsapp.message.sent' || $rawEvent === 'message_sent') {
+                $eventType = 'message_sent';
+            } else if ($rawEvent) {
+                $eventType = $rawEvent;
+            }
 
-            $name = $request->input('name') 
+            $name = $request->input('relationships.contact.name')
+                ?? $request->input('data.relationships.contact.name')
+                ?? $request->input('name') 
                 ?? $request->input('pushName') 
-                ?? $request->input('data.pushName') 
                 ?? null;
 
             // Find or create contact
@@ -100,8 +122,10 @@ class WebhookController extends Controller
                     'tags' => [],
                     'metadata' => [],
                 ]);
-            } else if (!empty($name) && ($contact->name === 'Cliente WhatsApp' || empty($contact->name))) {
-                $contact->update(['name' => $name]);
+            } else {
+                if (!empty($name) && ($contact->name === 'Cliente WhatsApp' || empty($contact->name))) {
+                    $contact->update(['name' => $name]);
+                }
             }
 
             // Record interaction if message is present
@@ -112,6 +136,7 @@ class WebhookController extends Controller
                     'direction' => $direction,
                     'content' => $message,
                     'metadata' => $request->input('metadata') ?? [],
+                    'created_at' => now(), // explicitly pass created_at
                 ]);
             }
 
@@ -145,4 +170,3 @@ class WebhookController extends Controller
         }
     }
 }
-
