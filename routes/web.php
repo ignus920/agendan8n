@@ -27,6 +27,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
+    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update');
     Route::get('/settings/automations', [AutomationController::class, 'index'])->name('settings.automations');
     
     // Nuevas rutas CRUD en React/Inertia

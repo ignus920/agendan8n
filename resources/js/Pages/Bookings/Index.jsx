@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import listPlugin from '@fullcalendar/list';
+import interactionPlugin from '@fullcalendar/interaction';
 import { 
     Calendar as CalendarIcon, 
     Clock, 
@@ -92,6 +93,28 @@ export default function BookingsIndex({ bookings, resources, products }) {
 
     const handleEventClick = (info) => {
         setSelectedEvent(info.event.extendedProps.booking);
+    };
+
+    const handleEventChange = (changeInfo) => {
+        const { event } = changeInfo;
+        const bookingId = event.id;
+        const startsAt = event.startStr;
+        let endsAt = event.endStr;
+        if (!endsAt && event.start) {
+            const endDate = new Date(event.start.getTime() + 60 * 60 * 1000);
+            endsAt = endDate.toISOString();
+        }
+
+        router.patch(route('bookings.update', bookingId), {
+            starts_at: startsAt,
+            ends_at: endsAt
+        }, {
+            preserveScroll: true,
+            onError: (errors) => {
+                changeInfo.revert();
+                alert('No se pudo reprogramar la cita: ' + Object.values(errors).join(', '));
+            }
+        });
     };
 
     return (
@@ -276,7 +299,7 @@ export default function BookingsIndex({ bookings, resources, products }) {
                             }
                         `}</style>
                         <FullCalendar
-                            plugins={[dayGridPlugin, timeGridPlugin, listPlugin]}
+                            plugins={[dayGridPlugin, timeGridPlugin, listPlugin, interactionPlugin]}
                             initialView="dayGridMonth"
                             headerToolbar={{
                                 left: 'prev,next today',
@@ -285,6 +308,11 @@ export default function BookingsIndex({ bookings, resources, products }) {
                             }}
                             events={calendarEvents}
                             eventClick={handleEventClick}
+                            editable={true}
+                            eventStartEditable={true}
+                            eventDurationEditable={true}
+                            eventDrop={handleEventChange}
+                            eventResize={handleEventChange}
                             locale="es"
                             buttonText={{
                                 today: 'Hoy',

@@ -25,4 +25,16 @@ class BookingController extends Controller
             'products' => $products
         ]);
     }
+
+    public function update(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'starts_at' => 'required|date',
+            'ends_at' => 'required|date|after:starts_at',
+        ]);
+
+        $booking->update($validated);
+
+        return redirect()->back()->with('success', 'Reserva actualizada con éxito.');
+    }
 }
