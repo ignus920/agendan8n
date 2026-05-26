@@ -95,7 +95,7 @@ export default function Tenants({ tenants, impersonating, impersonated_tenant })
     // Calculate metrics
     const totalTenants = tenants.length;
     const activeTenants = tenants.filter(t => t.is_active).length;
-    const totalBookings = tenants.reduce((acc, t) => acc + (t.bookings_count || 0), 0);
+    const totalContacts = tenants.reduce((acc, t) => acc + (t.contacts_count || 0), 0);
 
     return (
         <AuthenticatedLayout
@@ -139,11 +139,11 @@ export default function Tenants({ tenants, impersonating, impersonated_tenant })
 
                     <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 flex items-center justify-between shadow-xl">
                         <div>
-                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Citas Totales Reservadas</span>
-                            <div className="text-3xl font-bold text-white mt-1">{totalBookings}</div>
+                            <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider font-mono">Contactos Registrados</span>
+                            <div className="text-3xl font-bold text-white mt-1">{totalContacts}</div>
                         </div>
                         <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl">
-                            <Calendar className="h-6 w-6" />
+                            <Users className="h-6 w-6" />
                         </div>
                     </div>
                 </div>
