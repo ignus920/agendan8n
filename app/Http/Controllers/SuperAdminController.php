@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tenant;
+use App\Models\User;
 use App\Services\LeadScoringService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 
@@ -67,7 +69,18 @@ class SuperAdminController extends Controller
         // Generate default lead scoring rules for the new tenant
         LeadScoringService::createDefaultRules($tenant->id);
 
-        return redirect()->back()->with('success', 'Tenant creado exitosamente y reglas de negocio inicializadas.');
+        // Create default administrator user
+        $adminEmail = 'admin@' . $tenant->slug . '.com';
+        User::create([
+            'tenant_id' => $tenant->id,
+            'name' => 'Admin ' . $tenant->name,
+            'email' => $adminEmail,
+            'password' => Hash::make('12345678'),
+            'role' => 'tenant_admin',
+            'is_active' => true,
+        ]);
+
+        return redirect()->back()->with('success', 'Tenant creado exitosamente. Administrador: ' . $adminEmail . ' (Clave: 12345678)');
     }
 
     /**
