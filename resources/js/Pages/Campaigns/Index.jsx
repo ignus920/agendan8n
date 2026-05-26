@@ -26,7 +26,7 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
         name: '',
         template_name: 'promo_recompra_v2',
         template_params: { discount: '10%', product: 'Servicio VIP' },
-        segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '' },
+        segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
         scheduled_at: '',
         daily_limit: 100,
     });
@@ -45,7 +45,7 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
             name: campaign.name || '',
             template_name: campaign.template_name || '',
             template_params: campaign.template_params || {},
-            segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '' },
+            segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
             scheduled_at: campaign.scheduled_at ? campaign.scheduled_at.replace('.000000Z', '').slice(0, 16) : '',
             daily_limit: campaign.daily_limit || 100,
         });
@@ -278,6 +278,11 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                                                 Score Max: {campaign.segment_filters.max_score}
                                                             </span>
                                                         )}
+                                                        {campaign.segment_filters.inactive_days !== undefined && campaign.segment_filters.inactive_days !== '' && (
+                                                            <span className="text-[10px] bg-amber-50 text-amber-705 border border-amber-150 px-1.5 py-0.5 rounded-md font-semibold">
+                                                                Días Inactivo: {campaign.segment_filters.inactive_days}
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 ) : (
                                                     <span className="text-xs text-slate-400 italic">Todos los contactos</span>
@@ -501,7 +506,7 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-2 gap-3 mt-3">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-3">
                                             <div>
                                                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Mínimo Score</label>
                                                 <input
@@ -520,6 +525,17 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                                     value={data.segment_filters.max_score || ''}
                                                     onChange={e => setData('segment_filters', { ...data.segment_filters, max_score: e.target.value })}
                                                     placeholder="Ej: 100"
+                                                    min="0"
+                                                    className="block w-full px-2 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Días de Inactividad</label>
+                                                <input
+                                                    type="number"
+                                                    value={data.segment_filters.inactive_days || ''}
+                                                    onChange={e => setData('segment_filters', { ...data.segment_filters, inactive_days: e.target.value })}
+                                                    placeholder="Ej: 2"
                                                     min="0"
                                                     className="block w-full px-2 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
                                                 />
