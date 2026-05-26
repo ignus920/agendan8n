@@ -99,6 +99,12 @@ class CampaignController extends Controller
         if (isset($filters['max_score']) && $filters['max_score'] !== '') {
             $query->where('lead_score', '<=', (int) $filters['max_score']);
         }
+        if (isset($filters['inactive_days']) && $filters['inactive_days'] !== '') {
+            $days = (int) $filters['inactive_days'];
+            $query->whereDoesntHave('interactions', function($q) use ($days) {
+                $q->where('created_at', '>=', now()->subDays($days));
+            });
+        }
 
         $contacts = $query->get();
 

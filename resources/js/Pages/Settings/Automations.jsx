@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
 import { 
@@ -28,6 +28,56 @@ export default function AutomationsIndex({ automations, scoringRules }) {
     const [isEditingJson, setIsEditingJson] = useState(false);
     const [jsonInput, setJsonInput] = useState('');
     const [jsonError, setJsonError] = useState(null);
+
+    // Refs for textareas to insert variables at cursor position
+    const jsonInputRef = useRef(null);
+    const createActionsRef = useRef(null);
+
+    // Insert variable helper
+    const insertVariable = (variable, textareaRef, value, setValue) => {
+        const textarea = textareaRef.current;
+        if (!textarea) return;
+
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const before = text.substring(0, start);
+        const after = text.substring(end, text.length);
+
+        const newValue = before + variable + after;
+        setValue(newValue);
+
+        setTimeout(() => {
+            textarea.focus();
+            textarea.selectionStart = textarea.selectionEnd = start + variable.length;
+        }, 0);
+    };
+
+    const VariableChips = ({ onInsert }) => {
+        const variables = [
+            { label: '👤 Nombre', value: '{contact.name}', title: 'Nombre del contacto o "Cliente"' },
+            { label: '📦 Productos', value: '{products_list}', title: 'Lista de servicios y precios activos' },
+            { label: '📞 Teléfono', value: '{contact.phone}', title: 'Número de WhatsApp' },
+            { label: '🔥 Lead Score', value: '{contact.lead_score}', title: 'Score de interés' }
+        ];
+
+        return (
+            <div className="flex flex-wrap gap-1.5 mb-2 py-1 bg-slate-50/50 rounded-lg p-1.5 border border-slate-100">
+                <span className="text-[9px] uppercase font-bold text-slate-400 self-center mr-1">Variables:</span>
+                {variables.map((v) => (
+                    <button
+                        key={v.value}
+                        type="button"
+                        onClick={() => onInsert(v.value)}
+                        title={v.title}
+                        className="text-[10px] px-2 py-1 bg-white hover:bg-slate-100 text-slate-700 font-semibold border border-slate-200/80 rounded-md transition-colors shadow-xs active:scale-95"
+                    >
+                        {v.label}
+                    </button>
+                ))}
+            </div>
+        );
+    };
 
     // Create Modal state
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -443,7 +493,10 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                         </button>
                                     </div>
                                     
+                                    <VariableChips onInsert={(val) => insertVariable(val, jsonInputRef, jsonInput, setJsonInput)} />
+                                    
                                     <textarea
+                                        ref={jsonInputRef}
                                         value={jsonInput}
                                         onChange={(e) => setJsonInput(e.target.value)}
                                         rows="12"
@@ -651,7 +704,9 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                             {createType === 'flow' && (
                                 <div>
                                     <label className="block text-slate-555 mb-1">Acciones (Lista de Acciones JSON)</label>
+                                    <VariableChips onInsert={(val) => insertVariable(val, createActionsRef, createActions, setCreateActions)} />
                                     <textarea
+                                        ref={createActionsRef}
                                         value={createActions}
                                         onChange={(e) => setCreateActions(e.target.value)}
                                         rows="5"
