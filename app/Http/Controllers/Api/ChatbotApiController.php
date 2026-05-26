@@ -393,10 +393,20 @@ class ChatbotApiController extends Controller
     {
         $validated = $request->validate([
             'phone' => 'required|string',
+            'tenant_id' => 'nullable|string',
         ]);
 
         $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
-        $contact = Contact::where('whatsapp_phone', $cleanPhone)->first();
+        $tenantId = $request->header('X-Tenant-ID') ?: $request->input('tenant_id');
+
+        $query = Contact::withoutGlobalScope('tenant')
+            ->where('whatsapp_phone', $cleanPhone);
+
+        if ($tenantId) {
+            $query->where('tenant_id', $tenantId);
+        }
+
+        $contact = $query->first();
 
         if (!$contact) {
             return response()->json([

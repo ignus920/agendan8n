@@ -374,15 +374,6 @@ export default function BookingsIndex({ bookings, resources, products }) {
                                         <div className="font-semibold text-slate-800 mt-0.5">{selectedEvent.resource?.name}</div>
                                     </div>
 
-                                    {selectedEvent.product && (
-                                        <div>
-                                            <div className="text-xs text-slate-400 font-bold uppercase">Servicio</div>
-                                            <div className="font-semibold text-slate-800 mt-0.5">
-                                                {selectedEvent.product.name} (${parseFloat(selectedEvent.product.price).toFixed(0)})
-                                            </div>
-                                        </div>
-                                    )}
-
                                     {selectedEvent.notes && (
                                         <div className="bg-slate-50 p-3 rounded-xl border border-slate-150 text-xs text-slate-650">
                                             <strong>Notas: </strong> {selectedEvent.notes}

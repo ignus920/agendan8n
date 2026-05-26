@@ -104,28 +104,36 @@ class CampaignController extends Controller
         // Delete previous recipients if any
         $campaign->recipients()->delete();
 
+        $tenant = auth()->user()->tenant;
+        $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
+            $tenant->whatsmark_api_key,
+            $tenant->whatsmark_instance_id
+        );
+
         $sentCount = 0;
         $deliveredCount = 0;
-        $readCount = 0;
 
         foreach ($contacts as $contact) {
-            $isDelivered = rand(0, 100) > 10; // 90% delivery rate
-            $isRead = $isDelivered && (rand(0, 100) > 30); // ~70% read rate of delivered
+            // Call WhatsMark API to send the template message
+            $messageId = $whatsmark->sendTemplate(
+                $contact->whatsapp_phone,
+                $campaign->template_name,
+                $campaign->template_params ?: []
+            );
+
+            $isDelivered = !empty($messageId);
 
             CampaignRecipient::create([
                 'campaign_id' => $campaign->id,
                 'contact_id' => $contact->id,
                 'status' => $isDelivered ? 'sent' : 'failed',
                 'sent_at' => now(),
-                'error_message' => $isDelivered ? null : 'Error de entrega del Gateway de WhatsApp',
+                'error_message' => $isDelivered ? null : 'Error al enviar plantilla a WhatsMark',
             ]);
 
-            $sentCount++;
             if ($isDelivered) {
+                $sentCount++;
                 $deliveredCount++;
-            }
-            if ($isRead) {
-                $readCount++;
             }
         }
 
@@ -133,7 +141,7 @@ class CampaignController extends Controller
             'status' => 'sent',
             'sent_count' => $sentCount,
             'delivered_count' => $deliveredCount,
-            'read_count' => $readCount,
+            'read_count' => 0, // Read count will be updated via inbound webhook when read receipt is received
         ]);
 
         return redirect()->back()->with('success', "Campaña enviada a {$sentCount} contactos.");
