@@ -24,17 +24,18 @@ class WhatsMarkService
     public function sendMessage(string $phone, string $message): ?string
     {
         try {
-            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/messages';
-            
-            $payload = [
-                'phone' => $phone,
-                'message' => $message,
-            ];
-            
-            if ($this->instanceId) {
-                $payload['instance_id'] = $this->instanceId;
+            if (!$this->instanceId) {
+                Log::error("WhatsMark sendMessage failed: No instance_id provided.");
+                return null;
             }
 
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/messages/send';
+            
+            $payload = [
+                'phone_number' => $phone,
+                'message_body' => $message,
+            ];
+            
             $request = Http::timeout(10);
             if ($this->apiKey) {
                 $request = $request->withToken($this->apiKey);
@@ -64,17 +65,18 @@ class WhatsMarkService
     public function sendTemplate(string $phone, string $template, array $params = []): ?string
     {
         try {
-            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/templates';
+            if (!$this->instanceId) {
+                Log::error("WhatsMark sendTemplate failed: No instance_id provided.");
+                return null;
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/templates/send';
             
             $payload = [
-                'phone' => $phone,
+                'phone_number' => $phone,
                 'template_name' => $template,
                 'params' => $params,
             ];
-            
-            if ($this->instanceId) {
-                $payload['instance_id'] = $this->instanceId;
-            }
 
             $request = Http::timeout(10);
             if ($this->apiKey) {
