@@ -18,9 +18,17 @@ class CampaignController extends Controller
 
         $contacts = Contact::get(['id', 'name', 'funnel_stage', 'tags', 'interest_level']);
 
+        $tenant = auth()->user()->tenant;
+        $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
+            $tenant->whatsmark_api_key,
+            $tenant->whatsmark_instance_id
+        );
+        $whatsmarkTemplates = $whatsmark->getTemplates();
+
         return Inertia::render('Campaigns/Index', [
             'campaigns' => $campaigns,
             'contacts' => $contacts,
+            'whatsmarkTemplates' => $whatsmarkTemplates,
             'statuses' => Campaign::STATUSES
         ]);
     }

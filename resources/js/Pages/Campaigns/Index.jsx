@@ -18,14 +18,17 @@ import {
     AlertCircle
 } from 'lucide-react';
 
-export default function CampaignsIndex({ campaigns, contacts, statuses }) {
+export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates = [], statuses }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState(null);
 
+    // Get the first template name or fallback
+    const defaultTemplateName = whatsmarkTemplates.length > 0 ? whatsmarkTemplates[0].template_name : 'promo_recompra_v2';
+
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
         name: '',
-        template_name: 'promo_recompra_v2',
-        template_params: { discount: '10%', product: 'Servicio VIP' },
+        template_name: defaultTemplateName,
+        template_params: {},
         segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
         scheduled_at: '',
         daily_limit: 100,
@@ -403,51 +406,76 @@ export default function CampaignsIndex({ campaigns, contacts, statuses }) {
                                             required
                                         />
                                         {errors.name && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</div>}
-                                    </div>
+                                        
+                                        {/* Template Name */}
+                                     <div>
+                                         <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Plantilla de WhatsApp Homologada *</label>
+                                         <select
+                                             value={data.template_name}
+                                             onChange={e => {
+                                                 const tName = e.target.value;
+                                                 setData('template_name', tName);
+                                                 // Reset template parameters structure when template changes
+                                                 setData('template_params', {});
+                                             }}
+                                             className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                         >
+                                             {whatsmarkTemplates.length === 0 ? (
+                                                 <option value="">No hay plantillas homologadas disponibles</option>
+                                             ) : (
+                                                 whatsmarkTemplates.map((t) => (
+                                                     <option key={t.id} value={t.template_name}>
+                                                         {t.template_name} ({t.category})
+                                                     </option>
+                                                 ))
+                                             )}
+                                         </select>
+                                     </div>
 
-                                    {/* Template Name */}
-                                    <div>
-                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Plantilla de WhatsApp Homologada *</label>
-                                        <select
-                                            value={data.template_name}
-                                            onChange={e => setData('template_name', e.target.value)}
-                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
-                                        >
-                                            <option value="promo_recompra_v2">promo_recompra_v2 (Alerta de Recompra)</option>
-                                            <option value="bienvenida_prospectos">bienvenida_prospectos (Bienvenida)</option>
-                                            <option value="seguimiento_inactivos">seguimiento_inactivos (Rescate Prospecto)</option>
-                                            <option value="oferta_personalizada">oferta_personalizada (Oferta Especial)</option>
-                                        </select>
-                                    </div>
+                                     {/* Template Parameters */}
+                                     {(() => {
+                                         const selectedT = whatsmarkTemplates.find(t => t.template_name === data.template_name);
+                                         if (!selectedT) return null;
 
-                                    {/* Template Parameters */}
-                                    <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-3">
-                                        <h4 className="text-xs font-extrabold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                                            <Sliders className="h-4 w-4 text-brand-teal" />
-                                            Parámetros de Plantilla
-                                        </h4>
-                                        <div className="grid grid-cols-2 gap-3">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Descuento</label>
-                                                <input
-                                                    type="text"
-                                                    value={data.template_params.discount || ''}
-                                                    onChange={e => setData('template_params', { ...data.template_params, discount: e.target.value })}
-                                                    placeholder="Ej: 10% u Oferta"
-                                                    className="block w-full px-3 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Nombre Producto</label>
-                                                <input
-                                                    type="text"
-                                                    value={data.template_params.product || ''}
-                                                    onChange={e => setData('template_params', { ...data.template_params, product: e.target.value })}
-                                                    placeholder="Ej: Mantenimiento Cloud"
-                                                    className="block w-full px-3 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
-                                                />
-                                            </div>
-                                        </div>
+                                         // Match variables like {{1}}, {{2}} in the body_data text
+                                         const bodyData = selectedT.body_data || '';
+                                         const matches = bodyData.match(/\{\{\d+\}\}/g) || [];
+                                         const variables = [...new Set(matches)].sort(); // unique and sorted, e.g. ["{{1}}", "{{2}}"]
+
+                                         if (variables.length === 0) return null;
+
+                                         return (
+                                             <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-3">
+                                                 <h4 className="text-xs font-extrabold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                                                     <Sliders className="h-4 w-4 text-brand-teal" />
+                                                     Parámetros de la Plantilla ({selectedT.template_name})
+                                                 </h4>
+                                                 <p className="text-[10px] text-slate-500 font-mono italic mb-2">Vista previa: "{bodyData}"</p>
+                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                                     {variables.map((variable) => {
+                                                         const varIndex = variable.replace(/[\{\}]/g, ''); // Extract index number, e.g. "1", "2"
+                                                         return (
+                                                             <div key={variable}>
+                                                                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Variable {variable}</label>
+                                                                 <input
+                                                                     type="text"
+                                                                     value={data.template_params[varIndex] || ''}
+                                                                     onChange={e => {
+                                                                         const updatedParams = { ...data.template_params };
+                                                                         updatedParams[varIndex] = e.target.value;
+                                                                         setData('template_params', updatedParams);
+                                                                     }}
+                                                                     placeholder={`Valor para variable ${variable}`}
+                                                                     className="block w-full px-3 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
+                                                                     required
+                                                                 />
+                                                             </div>
+                                                         );
+                                                     })}
+                                                 </div>
+                                             </div>
+                                         );
+                                     })()}
                                     </div>
 
                                     {/* Segment Filters */}

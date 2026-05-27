@@ -101,4 +101,38 @@ class WhatsMarkService
             return null;
         }
     }
+
+    /**
+     * Get all WhatsApp message templates from WhatsMark.
+     */
+    public function getTemplates(): array
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark getTemplates failed: No instance_id provided.");
+                return [];
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/templates';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->get($endpoint);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                // Return templates array from paginated response
+                return $data['data']['data'] ?? $data['data'] ?? [];
+            }
+
+            Log::error("WhatsMark getTemplates failed. Status: {$response->status()}, Response: {$response->body()}");
+            return [];
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark getTemplates exception: {$e->getMessage()}");
+            return [];
+        }
+    }
 }
