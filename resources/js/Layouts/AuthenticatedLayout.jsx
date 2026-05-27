@@ -315,24 +315,12 @@ export default function AuthenticatedLayout({ header, children }) {
                 {/* Topbar */}
                 <header className="h-16 border-b border-slate-200/85 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-30">
                     <div className="flex items-center gap-2.5">
-                        {isSuperAdminMode ? (
+                        {isSuperAdminMode && (
                             /* Super Admin topbar indicators */
                             <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200/80 px-3 py-1 rounded-full text-[11px] text-amber-700 font-semibold">
                                 <ShieldAlert className="h-3.5 w-3.5 text-amber-500" />
                                 <span>Ticsia Platform Admin</span>
                             </div>
-                        ) : (
-                            /* Tenant user indicators */
-                            <>
-                                <div className="flex items-center gap-1.5 bg-emerald-50 border border-emerald-200/80 px-3 py-1 rounded-full text-[11px] text-emerald-700 font-semibold">
-                                    <Activity className="h-3.5 w-3.5 animate-pulse text-emerald-500" />
-                                    <span className="hidden sm:inline">WhatsApp Gateway:</span> Conectado
-                                </div>
-                                <div className="hidden sm:flex items-center gap-1.5 bg-blue-50 border border-blue-200/80 px-3 py-1 rounded-full text-[11px] text-blue-700 font-semibold">
-                                    <Sparkles className="h-3.5 w-3.5 text-blue-500" />
-                                    <span>AI: Gemini 2.0 Flash</span>
-                                </div>
-                            </>
                         )}
                     </div>
 
