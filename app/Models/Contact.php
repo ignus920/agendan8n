@@ -116,4 +116,14 @@ class Contact extends Model
         }
         return false;
     }
+
+    public function getHasActiveBookingAttribute(): bool
+    {
+        return $this->bookings()->whereIn('status', ['pending', 'confirmed'])->exists();
+    }
+
+    public function getMemoryLastPromptAttribute(): ?string
+    {
+        return $this->getMemory('last_prompt');
+    }
 }
