@@ -12,3 +12,4 @@ Artisan::command('inspire', function () {
 
 Schedule::job(new LeadScoreDecayJob)->daily();
 Schedule::job(new RepurchaseCheckJob)->daily();
+Schedule::command('campaigns:process-scheduled')->everyMinute();
