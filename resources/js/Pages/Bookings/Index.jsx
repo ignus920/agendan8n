@@ -56,7 +56,11 @@ export default function BookingsIndex({ bookings, resources, products }) {
         if (selectedResource !== 'all' && booking.resource_id !== parseInt(selectedResource)) return false;
 
         // Status Filter
-        if (statusFilter !== 'all' && booking.status !== statusFilter) return false;
+        if (statusFilter === 'all') {
+            if (booking.status === 'cancelled') return false;
+        } else if (booking.status !== statusFilter) {
+            return false;
+        }
 
         // Search Filter
         if (search) {
