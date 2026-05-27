@@ -62,7 +62,7 @@ class AutomationEngine
                 if ($eventType === 'message_received') {
                     foreach ($executedActions as $actionResult) {
                         $type = $actionResult['type'] ?? null;
-                        if ($type === 'send_whatsapp' || $type === 'trigger_n8n') {
+                        if (in_array($type, ['send_whatsapp', 'trigger_n8n', 'send_schedules', 'process_booking'])) {
                             Log::info("AutomationEngine: Stopping further rules propagation because action '{$type}' was executed for automation ID {$automation->id}");
                             break 2; // break the foreach loop and finish processEvent
                         }
@@ -597,23 +597,37 @@ class AutomationEngine
         // Mock current_tenant for the controller
         app()->instance('current_tenant', $contact->tenant);
         
-        $response = $controller->book($request);
-        $responseData = json_decode($response->getContent(), true);
+        try {
+            $response = $controller->book($request);
+            $responseData = json_decode($response->getContent(), true);
 
-        if ($response->status() === 200 && $responseData['status'] === 'success') {
-            $contact->setMemory('last_prompt', 'main_menu');
-            $contact->setMemory('active_booking_product_id', null);
-            $contact->setMemory('active_booking_resource_id', null);
+            if ($response->status() === 200 && ($responseData['status'] ?? '') === 'success') {
+                $contact->setMemory('last_prompt', 'main_menu');
+                $contact->setMemory('active_booking_product_id', null);
+                $contact->setMemory('active_booking_resource_id', null);
 
+                $this->actionSendWhatsApp([
+                    'message' => "✅ Tu cita fue agendada correctamente para {$startsAtStr}. Te atenderá: {$resource->name}"
+                ], $contact);
+                return ['status' => 'success', 'booking_id' => $responseData['data']['booking_id'] ?? null];
+            } else {
+                $this->actionSendWhatsApp([
+                    'message' => '❌ Ocurrió un error creando la reserva: ' . ($responseData['message'] ?? 'Error desconocido.')
+                ], $contact);
+                return ['error' => 'booking_failed'];
+            }
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            $errors = collect($e->errors())->flatten()->implode(', ');
             $this->actionSendWhatsApp([
-                'message' => "✅ Tu cita fue agendada correctamente para {$startsAtStr}. Te atenderá: {$resource->name}"
+                'message' => '❌ No pudimos agendar la cita. Hubo un error de validación: ' . $errors
             ], $contact);
-            return ['status' => 'success', 'booking_id' => $responseData['data']['booking_id']];
-        } else {
+            return ['error' => 'validation_failed'];
+        } catch (\Throwable $e) {
+            Log::error("Error in actionProcessBooking: " . $e->getMessage());
             $this->actionSendWhatsApp([
-                'message' => '❌ Ocurrió un error creando la reserva: ' . ($responseData['message'] ?? 'Error desconocido.')
+                'message' => '❌ No pudimos agendar la cita por un error inesperado.'
             ], $contact);
-            return ['error' => 'booking_failed'];
+            return ['error' => 'system_error'];
         }
     }
 
