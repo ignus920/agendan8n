@@ -247,9 +247,22 @@ class AutomationEngine
 
         $delta = $params['delta'] ?? 0;
         $previousScore = $contact->lead_score;
-        $contact->update(['lead_score' => max(0, $contact->lead_score + $delta)]);
+        $newScore = max(0, $contact->lead_score + $delta);
 
-        event(new \App\Events\ContactScoreChanged($contact, $previousScore, $contact->lead_score));
+        $level = match (true) {
+            $newScore >= 80 => 'hot',
+            $newScore >= 60 => 'high',
+            $newScore >= 40 => 'medium',
+            $newScore >= 20 => 'low',
+            default => 'unknown',
+        };
+
+        $contact->update([
+            'lead_score' => $newScore,
+            'interest_level' => $level
+        ]);
+
+        event(new \App\Events\ContactScoreChanged($contact, $previousScore, $newScore));
     }
 
     protected function actionUpdateFunnel(array $params, ?Contact $contact): void

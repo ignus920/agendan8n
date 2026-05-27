@@ -485,10 +485,20 @@ class ChatbotApiController extends Controller
 
         $booking->cancel();
 
-        // Reset contact stage to new and decrease score
+        // Reset contact stage to lost and decrease score
+        $newScore = max(0, $contact->lead_score - 15);
+        $level = match (true) {
+            $newScore >= 80 => 'hot',
+            $newScore >= 60 => 'high',
+            $newScore >= 40 => 'medium',
+            $newScore >= 20 => 'low',
+            default => 'unknown',
+        };
+
         $contact->update([
-            'funnel_stage' => 'new',
-            'lead_score' => max(0, $contact->lead_score - 15)
+            'funnel_stage' => 'lost',
+            'lead_score' => $newScore,
+            'interest_level' => $level
         ]);
 
         $contact->setMemory('active_booking_product_id', null);
