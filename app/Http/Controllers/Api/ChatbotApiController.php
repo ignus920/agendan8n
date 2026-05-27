@@ -299,6 +299,7 @@ class ChatbotApiController extends Controller
                 'starts_at' => $booking->starts_at->toDateTimeString(),
                 'ends_at' => $booking->ends_at->toDateTimeString(),
                 'status' => $booking->status,
+                'resource_name' => $resource->name,
                 'contact' => [
                     'id' => $contact->id,
                     'name' => $contact->name,
