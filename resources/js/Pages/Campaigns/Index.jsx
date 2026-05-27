@@ -67,10 +67,8 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
         e.preventDefault();
         
         transform((currentData) => {
-            let newStatus = currentData.status || 'draft';
-            if (newStatus === 'draft' || newStatus === 'scheduled') {
-                newStatus = currentData.scheduled_at ? 'scheduled' : 'draft';
-            }
+            // Always reset status to draft/scheduled when saving so it can be sent again
+            let newStatus = currentData.scheduled_at ? 'scheduled' : 'draft';
             return { ...currentData, status: newStatus };
         });
 
