@@ -70,11 +70,22 @@ class WhatsMarkService
                 return null;
             }
 
-            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/templates/send';
+            // Find the template language
+            $templates = $this->getTemplates();
+            $language = 'es'; // default
+            foreach ($templates as $t) {
+                if (($t['template_name'] ?? '') === $template) {
+                    $language = $t['language'] ?? 'es';
+                    break;
+                }
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/messages/template';
             
             $payload = [
                 'phone_number' => $phone,
                 'template_name' => $template,
+                'template_language' => $language,
                 'params' => $params,
             ];
 
@@ -87,7 +98,7 @@ class WhatsMarkService
 
             if ($response->successful()) {
                 $data = $response->json();
-                return $data['message_id'] ?? $data['id'] ?? 'success';
+                return $data['data']['whatsapp_response']['messages'][0]['id'] ?? $data['message_id'] ?? $data['id'] ?? 'success';
             }
 
             Log::error("WhatsMark sendTemplate failed. Status: {$response->status()}, Response: {$response->body()}");
