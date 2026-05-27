@@ -146,6 +146,29 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
         return statuses[status] || status;
     };
 
+    const funnelStageLabels = {
+        'new': 'Nuevo',
+        'interested': 'Interesado',
+        'qualified': 'Calificado',
+        'negotiation': 'Negociación',
+        'customer': 'Cliente',
+        'lost': 'Perdido',
+        'demo_scheduling': 'Agenda Incompleta (Demo)',
+        'demo_booking_select': 'Seleccionando Horario (Demo)',
+        'demo_cta': 'Llamado a Acción (Demo)',
+        'profile_taller': 'Perfil: Taller',
+        'profile_clinica': 'Perfil: Clínica',
+        'profile_turismo': 'Perfil: Turismo',
+        'profile_otro': 'Perfil: Otro'
+    };
+
+    const interestLevelLabels = {
+        'low': 'Bajo',
+        'medium': 'Medio',
+        'high': 'Alto',
+        'hot': 'Caliente (Hot)'
+    };
+
     return (
         <AuthenticatedLayout
             header={
@@ -268,12 +291,12 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
                                                     <div className="flex flex-wrap gap-1">
                                                         {campaign.segment_filters.funnel_stage && (
                                                             <span className="text-[10px] bg-blue-50 text-blue-600 border border-blue-150 px-1.5 py-0.5 rounded-md font-semibold">
-                                                                Etapa: {campaign.segment_filters.funnel_stage}
+                                                                Etapa: {funnelStageLabels[campaign.segment_filters.funnel_stage] || campaign.segment_filters.funnel_stage}
                                                             </span>
                                                         )}
                                                         {campaign.segment_filters.interest_level && (
                                                             <span className="text-[10px] bg-brand-orange-light text-brand-orange border border-brand-orange/20 px-1.5 py-0.5 rounded-md font-semibold">
-                                                                Interés: {campaign.segment_filters.interest_level}
+                                                                Interés: {interestLevelLabels[campaign.segment_filters.interest_level] || campaign.segment_filters.interest_level}
                                                             </span>
                                                         )}
                                                         {campaign.segment_filters.tag && (
@@ -514,6 +537,13 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
                                                     <option value="negotiation">Negociación</option>
                                                     <option value="customer">Cliente</option>
                                                     <option value="lost">Perdido</option>
+                                                    <option value="demo_scheduling">Agenda Incompleta (Demo)</option>
+                                                    <option value="demo_booking_select">Seleccionando Horario (Demo)</option>
+                                                    <option value="demo_cta">Llamado a Acción (Demo)</option>
+                                                    <option value="profile_taller">Perfil: Taller</option>
+                                                    <option value="profile_clinica">Perfil: Clínica</option>
+                                                    <option value="profile_turismo">Perfil: Turismo</option>
+                                                    <option value="profile_otro">Perfil: Otro</option>
                                                 </select>
                                             </div>
 
