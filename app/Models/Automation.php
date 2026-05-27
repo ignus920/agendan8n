@@ -53,6 +53,8 @@ class Automation extends Model
         'trigger_n8n' => 'Disparar flujo n8n',
         'update_memory' => 'Actualizar memoria',
         'pause_bot' => 'Pausar bot',
+        'send_schedules' => 'Enviar Horarios Disponibles',
+        'process_booking' => 'Procesar Agendamiento',
     ];
 
     public function logs(): HasMany

@@ -73,7 +73,7 @@ class ChatbotApiController extends Controller
     /**
      * Helper to get slots for a specific date.
      */
-    protected function getSlotsForDate(Resource $resource, string $dateString, ?int $productId, $tenant): array
+    public function getSlotsForDate(Resource $resource, string $dateString, ?int $productId, $tenant): array
     {
         $date = Carbon::parse($dateString);
         
@@ -143,7 +143,7 @@ class ChatbotApiController extends Controller
     /**
      * Generate the mapping of option number (1, 2, 3...) to datetime for the next 3 available days.
      */
-    protected function getResourceSlotsMap(Resource $resource, ?int $productId, $tenant): array
+    public function getResourceSlotsMap(Resource $resource, ?int $productId, $tenant): array
     {
         $slotsMap = [];
         $optionCounter = 1;

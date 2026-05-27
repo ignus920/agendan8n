@@ -191,6 +191,8 @@ class AutomationEngine
             'pause_bot' => $this->actionPauseBot($params, $contact),
             'cancel_booking' => $this->actionCancelBooking($params, $contact),
             'reschedule_booking' => $this->actionRescheduleBooking($params, $contact),
+            'send_schedules' => $this->actionSendSchedules($params, $contact),
+            'process_booking' => $this->actionProcessBooking($params, $payload, $contact),
             default => Log::warning("Unknown action type: {$type}"),
         };
     }
@@ -490,6 +492,129 @@ class AutomationEngine
         }
 
         return null;
+    }
+
+    protected function actionSendSchedules(array $params, ?Contact $contact): ?array
+    {
+        if (!$contact) return null;
+
+        $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
+        $resourceId = $contact->getMemory('active_booking_resource_id');
+
+        if (!$productId || !$resourceId) return null;
+
+        $resource = \App\Models\Resource::find($resourceId);
+        if (!$resource) return null;
+
+        $controller = app(\App\Http\Controllers\Api\ChatbotApiController::class);
+        $tenant = $contact->tenant;
+
+        $timezone = $tenant->timezone ?? 'America/Bogota';
+        $checkDate = \Carbon\Carbon::now($timezone);
+        $daysChecked = 0;
+        $businessDaysFound = 0;
+        $optionCounter = 1;
+
+        $listaHorarios = "Por favor selecciona una opción respondiendo con el número:\n\n";
+        $hasSlots = false;
+
+        \Carbon\Carbon::setLocale('es');
+
+        while ($businessDaysFound < 3 && $daysChecked < 30) {
+            $dateStr = $checkDate->format('Y-m-d');
+            $slots = $controller->getSlotsForDate($resource, $dateStr, $productId, $tenant);
+
+            if (!empty($slots)) {
+                $businessDaysFound++;
+                $friendlyDate = ucfirst($checkDate->translatedFormat('l, d \d\e F'));
+                $listaHorarios .= "*" . $friendlyDate . "*\n";
+
+                foreach ($slots as $slot) {
+                    $listaHorarios .= "{$optionCounter}. {$slot}\n";
+                    $optionCounter++;
+                }
+                $listaHorarios .= "\n";
+                $hasSlots = true;
+            }
+
+            $checkDate->addDay();
+            $daysChecked++;
+        }
+
+        if (!$hasSlots) {
+            $listaHorarios = "No hay horarios disponibles en los próximos días.";
+        }
+
+        $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
+            $tenant->whatsmark_api_key,
+            $tenant->whatsmark_instance_id
+        );
+        $whatsmark->sendMessage($contact->whatsapp_phone, $listaHorarios);
+
+        return ['slots_found' => $hasSlots];
+    }
+
+    protected function actionProcessBooking(array $params, array $payload, ?Contact $contact): ?array
+    {
+        if (!$contact) return null;
+
+        $selection = trim($payload['message'] ?? '');
+        if (!preg_match('/^\d+$/', $selection)) return null;
+
+        $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
+        $resourceId = $contact->getMemory('active_booking_resource_id');
+
+        if (!$productId || !$resourceId) return null;
+
+        $resource = \App\Models\Resource::find($resourceId);
+        if (!$resource) return null;
+
+        $controller = app(\App\Http\Controllers\Api\ChatbotApiController::class);
+        $slotsMap = $controller->getResourceSlotsMap($resource, $productId, $contact->tenant);
+
+        $optionIndex = (int) $selection;
+
+        if (!isset($slotsMap[$optionIndex])) {
+            $this->actionSendWhatsApp([
+                'message' => 'La opción seleccionada no es válida. Por favor responde con un número válido de la lista.'
+            ], $contact);
+            return ['error' => 'invalid_selection'];
+        }
+
+        $startsAtStr = $slotsMap[$optionIndex];
+
+        // Create the booking natively
+        $request = new \Illuminate\Http\Request();
+        $request->merge([
+            'phone' => $contact->whatsapp_phone,
+            'name' => $contact->name,
+            'product_id' => $productId,
+            'resource_id' => $resourceId,
+            'starts_at' => $startsAtStr,
+            'status' => 'confirmed'
+        ]);
+
+        // Mock current_tenant for the controller
+        app()->instance('current_tenant', $contact->tenant);
+        
+        $response = $controller->book($request);
+        $responseData = json_decode($response->getContent(), true);
+
+        if ($response->status() === 200 && $responseData['status'] === 'success') {
+            $contact->setMemory('last_prompt', 'main_menu');
+            $contact->setMemory('active_booking_product_id', null);
+            $contact->setMemory('active_booking_resource_id', null);
+
+            $this->actionSendWhatsApp([
+                'message' => "✅ Tu cita fue agendada correctamente para {$startsAtStr}. Te atenderá: {$resource->name}"
+            ], $contact);
+            return ['status' => 'success', 'booking_id' => $responseData['data']['booking_id']];
+        } else {
+            $this->actionSendWhatsApp([
+                'message' => '❌ Ocurrió un error creando la reserva: ' . ($responseData['message'] ?? 'Error desconocido.')
+            ], $contact);
+            return ['error' => 'booking_failed'];
+        }
     }
 
     /**
