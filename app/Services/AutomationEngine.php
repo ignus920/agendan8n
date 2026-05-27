@@ -366,10 +366,22 @@ class AutomationEngine
             // Extract custom parameters to send to n8n (exclude webhook_url)
             $customParams = collect($params)->except(['webhook_url'])->toArray();
 
-            $this->n8nService->triggerWorkflow($webhookUrl, array_merge($payload, $customParams, [
+            $mergedPayload = array_merge($payload, $customParams, [
                 'contact_id' => $contact?->id,
                 'contact_phone' => $contact?->whatsapp_phone,
-            ]));
+            ]);
+
+            \Illuminate\Support\Facades\Log::info('actionTriggerN8n: Sending to n8n', [
+                'webhook_url' => $webhookUrl,
+                'payload_keys' => array_keys($mergedPayload),
+                'has_product_id' => isset($mergedPayload['product_id']),
+                'has_resource_id' => isset($mergedPayload['resource_id']),
+                'product_id_value' => $mergedPayload['product_id'] ?? 'NOT SET',
+                'resource_id_value' => $mergedPayload['resource_id'] ?? 'NOT SET',
+                'message' => $mergedPayload['message'] ?? 'NO MESSAGE',
+            ]);
+
+            $this->n8nService->triggerWorkflow($webhookUrl, $mergedPayload);
         }
     }
 
