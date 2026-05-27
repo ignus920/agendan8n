@@ -379,6 +379,20 @@ class AutomationEngine
                 'contact_phone' => $contact?->whatsapp_phone,
             ]);
 
+            // Inject product_id and resource_id from memory if not explicitly provided
+            if ($contact && !isset($mergedPayload['product_id'])) {
+                $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
+                if ($productId) {
+                    $mergedPayload['product_id'] = $productId;
+                }
+            }
+            if ($contact && !isset($mergedPayload['resource_id'])) {
+                $resourceId = $contact->getMemory('active_booking_resource_id');
+                if ($resourceId) {
+                    $mergedPayload['resource_id'] = $resourceId;
+                }
+            }
+
             \Illuminate\Support\Facades\Log::info('actionTriggerN8n: Sending to n8n', [
                 'webhook_url' => $webhookUrl,
                 'payload_keys' => array_keys($mergedPayload),
