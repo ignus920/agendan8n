@@ -103,8 +103,15 @@ class AutomationEngine
                     return false;
                 }
             } else {
-                if ($actual != $expected) {
-                    return false;
+                if (is_string($expected) && str_starts_with($expected, 'regex:')) {
+                    $pattern = substr($expected, 6);
+                    if (!preg_match($pattern, (string) $actual)) {
+                        return false;
+                    }
+                } else {
+                    if ($actual != $expected) {
+                        return false;
+                    }
                 }
             }
         }
