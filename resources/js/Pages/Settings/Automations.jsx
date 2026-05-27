@@ -464,7 +464,7 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                 </div>
 
                 {/* Right side JSON Detail editor / Documentation */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 min-h-[500px] shadow-sm sticky top-6">
+                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm sticky top-6 h-max self-start">
                     {selectedAutomation ? (
                         <div className="space-y-6">
                             <div>
