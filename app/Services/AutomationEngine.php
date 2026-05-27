@@ -366,55 +366,6 @@ class AutomationEngine
             // Extract custom parameters to send to n8n (exclude webhook_url)
             $customParams = collect($params)->except(['webhook_url'])->toArray();
 
-            // If the message is a numeric selection and we are triggering n8n
-            // and we don't have product_id/resource_id defined yet, resolve it dynamically
-            $messageText = trim($payload['message'] ?? '');
-            if (preg_match('/^\d+$/', $messageText) && empty($customParams['product_id']) && $contact) {
-                $optionIndex = (int) $messageText;
-                
-                // Get the products in the same order as {products_list}
-                $products = \App\Models\Product::where('tenant_id', $contact->tenant_id)
-                    ->where('status', 'active')
-                    ->orderBy('sort_order')
-                    ->orderBy('name')
-                    ->get();
-                
-                if (isset($products[$optionIndex - 1])) {
-                    $selectedProduct = $products[$optionIndex - 1];
-                    $customParams['product_id'] = $selectedProduct->id;
-                    
-                    // Automatically resolve resource_id (find the first active resource for this tenant/product)
-                    $resource = \App\Models\Resource::where('tenant_id', $contact->tenant_id)
-                        ->where('is_active', true)
-                        ->first();
-                    if ($resource) {
-                        $customParams['resource_id'] = $resource->id;
-                    }
-                    
-                    // Save to memory so subsequent steps work
-                    $contact->setMemory('active_booking_product_id', (string)$selectedProduct->id);
-                    if ($resource) {
-                        $contact->setMemory('active_booking_resource_id', (string)$resource->id);
-                    }
-                }
-            }
-
-            // Also pull product_id and resource_id from contact memory if they are not set yet
-            if ($contact) {
-                if (empty($customParams['product_id'])) {
-                    $productIdMemory = $contact->getMemory('active_booking_product_id');
-                    if ($productIdMemory) {
-                        $customParams['product_id'] = $productIdMemory;
-                    }
-                }
-                if (empty($customParams['resource_id'])) {
-                    $resourceIdMemory = $contact->getMemory('active_booking_resource_id');
-                    if ($resourceIdMemory) {
-                        $customParams['resource_id'] = $resourceIdMemory;
-                    }
-                }
-            }
-
             $this->n8nService->triggerWorkflow($webhookUrl, array_merge($payload, $customParams, [
                 'contact_id' => $contact?->id,
                 'contact_phone' => $contact?->whatsapp_phone,
