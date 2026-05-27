@@ -399,6 +399,22 @@ class AutomationEngine
                 }
             }
 
+            // Also pull product_id and resource_id from contact memory if they are not set yet
+            if ($contact) {
+                if (empty($customParams['product_id'])) {
+                    $productIdMemory = $contact->getMemory('active_booking_product_id');
+                    if ($productIdMemory) {
+                        $customParams['product_id'] = $productIdMemory;
+                    }
+                }
+                if (empty($customParams['resource_id'])) {
+                    $resourceIdMemory = $contact->getMemory('active_booking_resource_id');
+                    if ($resourceIdMemory) {
+                        $customParams['resource_id'] = $resourceIdMemory;
+                    }
+                }
+            }
+
             $this->n8nService->triggerWorkflow($webhookUrl, array_merge($payload, $customParams, [
                 'contact_id' => $contact?->id,
                 'contact_phone' => $contact?->whatsapp_phone,
