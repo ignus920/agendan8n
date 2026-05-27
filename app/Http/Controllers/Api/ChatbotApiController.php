@@ -247,9 +247,13 @@ class ChatbotApiController extends Controller
         }
 
         $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
+        $phoneWithPlus = '+' . $cleanPhone;
 
         $contact = Contact::where('tenant_id', $tenantId)
-            ->where('whatsapp_phone', $cleanPhone)
+            ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                $q->where('whatsapp_phone', $cleanPhone)
+                  ->orWhere('whatsapp_phone', $phoneWithPlus);
+            })
             ->first();
 
         if (!$contact) {
@@ -364,9 +368,13 @@ class ChatbotApiController extends Controller
 
         $tenant = app('current_tenant');
         $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
+        $phoneWithPlus = '+' . $cleanPhone;
 
         $contact = Contact::where('tenant_id', $tenant->id)
-            ->where('whatsapp_phone', $cleanPhone)
+            ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                $q->where('whatsapp_phone', $cleanPhone)
+                  ->orWhere('whatsapp_phone', $phoneWithPlus);
+            })
             ->first();
 
         if (!$contact) {
@@ -398,10 +406,14 @@ class ChatbotApiController extends Controller
         ]);
 
         $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
+        $phoneWithPlus = '+' . $cleanPhone;
         $tenantId = $request->header('X-Tenant-ID') ?: $request->input('tenant_id');
 
         $query = Contact::withoutGlobalScope('tenant')
-            ->where('whatsapp_phone', $cleanPhone);
+            ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                $q->where('whatsapp_phone', $cleanPhone)
+                  ->orWhere('whatsapp_phone', $phoneWithPlus);
+            });
 
         if ($tenantId) {
             $query->where('tenant_id', $tenantId);

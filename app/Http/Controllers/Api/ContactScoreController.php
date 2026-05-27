@@ -20,8 +20,15 @@ class ContactScoreController extends Controller
         ]);
 
         try {
+            $phone = $payload['phone'];
+            $cleanPhone = preg_replace('/\D/', '', $phone);
+            $phoneWithPlus = '+' . $cleanPhone;
+
             $contact = Contact::where('tenant_id', $payload['tenant_id'])
-                ->where('whatsapp_phone', $payload['phone'])
+                ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                    $q->where('whatsapp_phone', $cleanPhone)
+                      ->orWhere('whatsapp_phone', $phoneWithPlus);
+                })
                 ->firstOrFail();
 
             $eventPayload = $payload['payload'] ?? [];
