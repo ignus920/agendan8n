@@ -220,7 +220,43 @@ class AutomationEngine
         $message = str_replace('{contact.phone}', $contact->whatsapp_phone, $message);
         $message = str_replace('{contact.lead_score}', $contact->lead_score, $message);
 
-        // 2. Replace {products_list} placeholder with dynamic DB products
+        // 2. Replace product and resource dynamic placeholders (non-hardcoded)
+        if (str_contains($message, '{last_product.name}') || str_contains($message, '{last_resource.name}')) {
+            $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
+            $resourceId = $contact->getMemory('active_booking_resource_id');
+
+            if (!$resourceId) {
+                // Try to get from last pending/confirmed booking
+                $lastBooking = \App\Models\Booking::where('tenant_id', $contact->tenant_id)
+                    ->where('contact_id', $contact->id)
+                    ->orderBy('created_at', 'desc')
+                    ->first();
+                if ($lastBooking) {
+                    $productId = $productId ?: $lastBooking->product_id;
+                    $resourceId = $lastBooking->resource_id;
+                }
+            }
+
+            if ($productId) {
+                $product = \App\Models\Product::find($productId);
+                if ($product) {
+                    $message = str_replace('{last_product.name}', $product->name, $message);
+                }
+            }
+
+            if ($resourceId) {
+                $resource = \App\Models\Resource::find($resourceId);
+                if ($resource) {
+                    $message = str_replace('{last_resource.name}', $resource->name, $message);
+                }
+            }
+        }
+
+        // Fallbacks for placeholders if not resolved
+        $message = str_replace('{last_product.name}', 'servicio contratado', $message);
+        $message = str_replace('{last_resource.name}', 'técnico asignado', $message);
+
+        // 3. Replace {products_list} placeholder with dynamic DB products
         if (str_contains($message, '{products_list}')) {
             $products = \App\Models\Product::where('tenant_id', $contact->tenant_id)
                 ->where('status', 'active')
