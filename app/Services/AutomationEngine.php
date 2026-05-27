@@ -291,7 +291,10 @@ class AutomationEngine
     {
         $webhookUrl = $params['webhook_url'] ?? $contact?->tenant?->n8n_webhook_url;
         if ($webhookUrl) {
-            $this->n8nService->triggerWorkflow($webhookUrl, array_merge($payload, [
+            // Extract custom parameters to send to n8n (exclude webhook_url)
+            $customParams = collect($params)->except(['webhook_url'])->toArray();
+
+            $this->n8nService->triggerWorkflow($webhookUrl, array_merge($payload, $customParams, [
                 'contact_id' => $contact?->id,
                 'contact_phone' => $contact?->whatsapp_phone,
             ]));
