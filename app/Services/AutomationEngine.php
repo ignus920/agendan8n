@@ -179,6 +179,8 @@ class AutomationEngine
             'schedule_followup' => $this->actionScheduleFollowup($params, $payload, $contact),
             'update_memory' => $this->actionUpdateMemory($params, $contact),
             'pause_bot' => $this->actionPauseBot($params, $contact),
+            'cancel_booking' => $this->actionCancelBooking($params, $contact),
+            'reschedule_booking' => $this->actionRescheduleBooking($params, $contact),
             default => Log::warning("Unknown action type: {$type}"),
         };
     }
@@ -343,6 +345,54 @@ class AutomationEngine
             'bot_paused' => true,
             'bot_paused_until' => now()->addHours($hours),
         ]);
+    }
+
+    protected function actionCancelBooking(array $params, ?Contact $contact): bool
+    {
+        if (!$contact) return false;
+
+        $booking = \App\Models\Booking::where('tenant_id', $contact->tenant_id)
+            ->where('contact_id', $contact->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($booking) {
+            $booking->cancel();
+            $contact->setMemory('active_booking_product_id', null);
+            $contact->setMemory('active_booking_resource_id', null);
+            return true;
+        }
+
+        return false;
+    }
+
+    protected function actionRescheduleBooking(array $params, ?Contact $contact): ?array
+    {
+        if (!$contact) return null;
+
+        $booking = \App\Models\Booking::where('tenant_id', $contact->tenant_id)
+            ->where('contact_id', $contact->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if ($booking) {
+            $productId = $booking->product_id;
+            $resourceId = $booking->resource_id;
+
+            $booking->cancel();
+
+            $contact->setMemory('active_booking_product_id', (string)$productId);
+            $contact->setMemory('active_booking_resource_id', (string)$resourceId);
+
+            return [
+                'product_id' => $productId,
+                'resource_id' => $resourceId
+            ];
+        }
+
+        return null;
     }
 
     /**

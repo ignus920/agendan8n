@@ -440,4 +440,126 @@ class ChatbotApiController extends Controller
             ]
         ]);
     }
+
+    /**
+     * Cancel the contact's last pending/confirmed booking.
+     */
+    public function cancelBooking(Request $request)
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $tenant = app('current_tenant');
+        $tenantId = $tenant->id;
+
+        $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
+        $phoneWithPlus = '+' . $cleanPhone;
+
+        $contact = Contact::where('tenant_id', $tenantId)
+            ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                $q->where('whatsapp_phone', $cleanPhone)
+                  ->orWhere('whatsapp_phone', $phoneWithPlus);
+            })
+            ->first();
+
+        if (!$contact) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Contacto no encontrado.'
+            ], 404);
+        }
+
+        $booking = Booking::where('tenant_id', $tenantId)
+            ->where('contact_id', $contact->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No tienes citas activas para cancelar.'
+            ], 404);
+        }
+
+        $booking->cancel();
+
+        // Reset contact stage to new and decrease score
+        $contact->update([
+            'funnel_stage' => 'new',
+            'lead_score' => max(0, $contact->lead_score - 15)
+        ]);
+
+        $contact->setMemory('active_booking_product_id', null);
+        $contact->setMemory('active_booking_resource_id', null);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Tu cita ha sido cancelada exitosamente.',
+            'booking' => $booking
+        ]);
+    }
+
+    /**
+     * Cancel the contact's last pending/confirmed booking, but save service in memory for rescheduling.
+     */
+    public function rescheduleBooking(Request $request)
+    {
+        $validated = $request->validate([
+            'phone' => 'required|string',
+        ]);
+
+        $tenant = app('current_tenant');
+        $tenantId = $tenant->id;
+
+        $cleanPhone = preg_replace('/\D/', '', $validated['phone']);
+        $phoneWithPlus = '+' . $cleanPhone;
+
+        $contact = Contact::where('tenant_id', $tenantId)
+            ->where(function ($q) use ($cleanPhone, $phoneWithPlus) {
+                $q->where('whatsapp_phone', $cleanPhone)
+                  ->orWhere('whatsapp_phone', $phoneWithPlus);
+            })
+            ->first();
+
+        if (!$contact) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'Contacto no encontrado.'
+            ], 404);
+        }
+
+        $booking = Booking::where('tenant_id', $tenantId)
+            ->where('contact_id', $contact->id)
+            ->whereIn('status', ['pending', 'confirmed'])
+            ->orderBy('created_at', 'desc')
+            ->first();
+
+        if (!$booking) {
+            return response()->json([
+                'status' => 'error',
+                'message' => 'No tienes citas activas para reprogramar.'
+            ], 404);
+        }
+
+        $productId = $booking->product_id;
+        $resourceId = $booking->resource_id;
+
+        $booking->cancel();
+
+        // Save back in session memory so n8n can fetch it
+        $contact->setMemory('active_booking_product_id', (string)$productId);
+        $contact->setMemory('active_booking_resource_id', (string)$resourceId);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Cita previa cancelada. Iniciando reprogramación.',
+            'data' => [
+                'product_id' => $productId,
+                'resource_id' => $resourceId
+            ]
+        ]);
+    }
 }
+

@@ -25,6 +25,8 @@ Route::prefix('v1')->group(function () {
         Route::post('/chatbot/bookings', [ChatbotApiController::class, 'book']);
         Route::post('/chatbot/send-message', [ChatbotApiController::class, 'sendMessage']);
         Route::post('/chatbot/save-session', [ChatbotApiController::class, 'saveSession']);
+        Route::post('/chatbot/cancel-booking', [ChatbotApiController::class, 'cancelBooking']);
+        Route::post('/chatbot/reschedule-booking', [ChatbotApiController::class, 'rescheduleBooking']);
     });
 });
 
