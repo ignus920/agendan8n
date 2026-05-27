@@ -25,13 +25,14 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
     // Get the first template name or fallback
     const defaultTemplateName = whatsmarkTemplates.length > 0 ? whatsmarkTemplates[0].template_name : 'promo_recompra_v2';
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
         template_name: defaultTemplateName,
         template_params: {},
         segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
         scheduled_at: '',
         daily_limit: 100,
+        status: 'draft',
     });
 
     const openCreateModal = () => {
@@ -51,6 +52,7 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
             segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
             scheduled_at: campaign.scheduled_at ? campaign.scheduled_at.replace('.000000Z', '').slice(0, 16) : '',
             daily_limit: campaign.daily_limit || 100,
+            status: campaign.status,
         });
         setIsModalOpen(true);
     };
@@ -64,6 +66,14 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
     const handleSubmit = (e) => {
         e.preventDefault();
         
+        transform((currentData) => {
+            let newStatus = currentData.status || 'draft';
+            if (newStatus === 'draft' || newStatus === 'scheduled') {
+                newStatus = currentData.scheduled_at ? 'scheduled' : 'draft';
+            }
+            return { ...currentData, status: newStatus };
+        });
+
         if (editingCampaign) {
             put(route('campaigns.update', editingCampaign.id), {
                 onSuccess: () => closeModal(),
