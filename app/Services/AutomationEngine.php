@@ -282,8 +282,15 @@ class AutomationEngine
                 foreach ($products as $product) {
                     $formattedPrice = number_format($product->price, 0, ',', '.');
                     $safeDescription = trim(strip_tags($product->description));
+                    $safeDescription = \Illuminate\Support\Str::limit($safeDescription, 120);
                     $list .= "• *{$index}. {$product->name}*: \${$formattedPrice} USD\n{$safeDescription}\n\n";
                     $index++;
+                    
+                    // Prevent exceeding WhatsApp 4096 char limit
+                    if (strlen($list) > 3500) {
+                        $list .= "\n_(Se omitieron algunos servicios adicionales)_\n";
+                        break;
+                    }
                 }
             }
             $message = str_replace('{products_list}', trim($list), $message);
