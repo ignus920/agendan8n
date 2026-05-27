@@ -256,19 +256,23 @@ class AutomationEngine
         $message = str_replace('{last_product.name}', 'servicio contratado', $message);
         $message = str_replace('{last_resource.name}', 'técnico asignado', $message);
 
-        // 3. Replace {products_list} placeholder with dynamic DB products
+        // 3. Replace {products_list} placeholder with dynamic DB products (numbered 1, 2, 3...)
         if (str_contains($message, '{products_list}')) {
             $products = \App\Models\Product::where('tenant_id', $contact->tenant_id)
                 ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
                 ->get();
 
             $list = "";
             if ($products->isEmpty()) {
                 $list = "No tenemos servicios disponibles en este momento.";
             } else {
+                $index = 1;
                 foreach ($products as $product) {
                     $formattedPrice = number_format($product->price, 0, ',', '.');
-                    $list .= "• *{$product->name}*: \${$formattedPrice} USD\n_{$product->description}_\n\n";
+                    $list .= "• *{$index}*. *{$product->name}*: \${$formattedPrice} USD\n_{$product->description}_\n\n";
+                    $index++;
                 }
             }
             $message = str_replace('{products_list}', trim($list), $message);
