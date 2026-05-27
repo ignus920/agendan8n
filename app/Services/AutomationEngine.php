@@ -281,7 +281,8 @@ class AutomationEngine
                 $index = 1;
                 foreach ($products as $product) {
                     $formattedPrice = number_format($product->price, 0, ',', '.');
-                    $list .= "• *{$index}*. *{$product->name}*: \${$formattedPrice} USD\n_{$product->description}_\n\n";
+                    $safeDescription = trim(strip_tags($product->description));
+                    $list .= "• *{$index}. {$product->name}*: \${$formattedPrice} USD\n{$safeDescription}\n\n";
                     $index++;
                 }
             }
