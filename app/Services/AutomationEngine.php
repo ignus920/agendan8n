@@ -59,6 +59,16 @@ class AutomationEngine
 
                 $this->logExecution($automation, $contact, $eventType, $payload, $executedActions, 'success');
 
+                if ($eventType === 'message_received') {
+                    foreach ($executedActions as $actionResult) {
+                        $type = $actionResult['type'] ?? null;
+                        if ($type === 'send_whatsapp' || $type === 'trigger_n8n') {
+                            Log::info("AutomationEngine: Stopping further rules propagation because action '{$type}' was executed for automation ID {$automation->id}");
+                            break 2; // break the foreach loop and finish processEvent
+                        }
+                    }
+                }
+
             } catch (\Throwable $e) {
                 Log::error("AutomationEngine error: {$e->getMessage()}", [
                     'automation_id' => $automation->id,
