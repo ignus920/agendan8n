@@ -301,7 +301,7 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 items-start">
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
                 {/* Left Listing Panel */}
                 <div className="xl:col-span-2 space-y-5">
                     {activeTab === 'flows' ? (
@@ -464,8 +464,9 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                 </div>
 
                 {/* Right side JSON Detail editor / Documentation */}
-                <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm sticky top-6 h-max self-start">
-                    {selectedAutomation ? (
+                <div className="xl:col-span-1 h-full relative">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm sticky top-6">
+                        {selectedAutomation ? (
                         <div className="space-y-6">
                             <div>
                                 <div className="text-xs text-brand-teal font-extrabold font-mono uppercase tracking-wider">Detalles de la Automatización</div>
@@ -573,6 +574,7 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                             </p>
                         </div>
                     )}
+                </div>
                 </div>
             </div>
 
