@@ -501,6 +501,14 @@ class AutomationEngine
         $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
         $resourceId = $contact->getMemory('active_booking_resource_id');
 
+        if (!$productId || !$resourceId) {
+            $productId = $productId ?: \App\Models\Product::where('tenant_id', $contact->tenant_id)->first()?->id;
+            $resourceId = $resourceId ?: \App\Models\Resource::where('tenant_id', $contact->tenant_id)->first()?->id;
+            
+            if ($productId) $contact->setMemory('active_booking_product_id', (string)$productId);
+            if ($resourceId) $contact->setMemory('active_booking_resource_id', (string)$resourceId);
+        }
+
         if (!$productId || !$resourceId) return null;
 
         $resource = \App\Models\Resource::find($resourceId);
@@ -564,7 +572,17 @@ class AutomationEngine
         $productId = $contact->getMemory('active_booking_product_id') ?: $contact->last_product_id;
         $resourceId = $contact->getMemory('active_booking_resource_id');
 
-        if (!$productId || !$resourceId) return null;
+        if (!$productId || !$resourceId) {
+            $productId = $productId ?: \App\Models\Product::where('tenant_id', $contact->tenant_id)->first()?->id;
+            $resourceId = $resourceId ?: \App\Models\Resource::where('tenant_id', $contact->tenant_id)->first()?->id;
+        }
+
+        if (!$productId || !$resourceId) {
+            $this->actionSendWhatsApp([
+                'message' => '❌ Ocurrió un error. No se especificó el servicio o asesor.'
+            ], $contact);
+            return ['error' => 'missing_requirements'];
+        }
 
         $resource = \App\Models\Resource::find($resourceId);
         if (!$resource) return null;
