@@ -311,7 +311,7 @@ INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `act
 -- 9. FLUJO DE SELECCIÓN DE FECHA (NUMÉRICO) (PRIORIDAD 30)
 -- ==========================================
 ('019f514e-7924-71b2-9861-86be43bc2d1e', 'Gestión Cita - Procesar Selección', 'message_received', 
-'{"message": "regex:/^\\d+$/", "contact.memory_last_prompt": "booking_flow"}', 
+'{"message": "regex:/^[0-9]+$/", "contact.memory_last_prompt": "booking_flow"}', 
 '[
   {
     "type": "process_booking",
