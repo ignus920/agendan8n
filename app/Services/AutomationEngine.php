@@ -98,7 +98,7 @@ class AutomationEngine
     /**
      * Evaluate automation conditions against the event payload and contact.
      */
-    protected function evaluateConditions(array $conditions, array $payload, ?Contact $contact): bool
+    protected function evaluateConditions(?array $conditions, array $payload, ?Contact $contact): bool
     {
         if (empty($conditions)) {
             return true;
