@@ -110,10 +110,10 @@ INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `act
 ]', 1, 20, 0, NOW(), NOW()),
 
 -- ==========================================
--- 2.4 CTA: AGENDAR DESDE PERFILAMIENTO (PRIORIDAD 20)
+-- 2.4 CTA: AGENDAR DESDE PERFILAMIENTO (SIN CITA ACTIVA) (PRIORIDAD 20)
 -- ==========================================
-('019f514e-7924-71b2-9861-86be43bc2d1e', 'CTA - Agendar', 'message_received', 
-'{"message": "regex:/^1$/", "contact.memory_last_prompt": "demo_or_agent"}', 
+('019f514e-7924-71b2-9861-86be43bc2d1e', 'CTA - Agendar (Sin Cita)', 'message_received', 
+'{"message": "regex:/^1$/", "contact.memory_last_prompt": "demo_or_agent", "contact.has_active_booking": false}', 
 '[
   {
     "type": "send_schedules",
@@ -123,6 +123,26 @@ INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `act
     "type": "update_memory",
     "params": {
       "last_prompt": "booking_flow"
+    }
+  }
+]', 1, 20, 0, NOW(), NOW()),
+
+-- ==========================================
+-- 2.4.1 CTA: AGENDAR DESDE PERFILAMIENTO (CON CITA ACTIVA) (PRIORIDAD 20)
+-- ==========================================
+('019f514e-7924-71b2-9861-86be43bc2d1e', 'CTA - Agendar (Con Cita)', 'message_received', 
+'{"message": "regex:/^1$/", "contact.memory_last_prompt": "demo_or_agent", "contact.has_active_booking": true}', 
+'[
+  {
+    "type": "send_whatsapp",
+    "params": {
+      "message": "Veo que ya tienes una cita activa. ¿Qué deseas hacer?\n\n*1.* 👁️ Ver mi cita actual\n*2.* 🔄 Reagendar cita\n*3.* ❌ Cancelar cita\n*4.* ➕ Crear una nueva cita adicional"
+    }
+  },
+  {
+    "type": "update_memory",
+    "params": {
+      "last_prompt": "manage_booking"
     }
   }
 ]', 1, 20, 0, NOW(), NOW()),
