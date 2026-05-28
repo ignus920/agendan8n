@@ -136,7 +136,7 @@ INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `act
   {
     "type": "send_whatsapp",
     "params": {
-      "message": "Veo que ya tienes una cita activa. ¿Qué deseas hacer?\n\n*1.* 👁️ Ver mi cita actual\n*2.* 🔄 Reagendar cita\n*3.* ❌ Cancelar cita\n*4.* ➕ Crear una nueva cita adicional"
+      "message": "Veo que ya tienes una cita activa. ¿Qué deseas hacer?\\n\\n*1.* 👁️ Ver mi cita actual\\n*2.* 🔄 Reagendar cita\\n*3.* ❌ Cancelar cita\\n*4.* ➕ Crear una nueva cita adicional"
     }
   },
   {
