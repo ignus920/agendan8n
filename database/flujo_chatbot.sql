@@ -1,8 +1,8 @@
 -- Script de Creación del Flujo Conversacional Dinámico para SAC
 -- Tenant ID: 019f514e-7924-71b2-9861-86be43bc2d1e
 
--- Opcional: Eliminar automatizaciones previas de 'message_received' para este tenant para evitar duplicados
--- DELETE FROM `automations` WHERE `tenant_id` = '019f514e-7924-71b2-9861-86be43bc2d1e' AND `event_type` = 'message_received';
+-- Eliminar automatizaciones previas de 'message_received' para este tenant para evitar duplicados
+DELETE FROM `automations` WHERE `tenant_id` = '019f514e-7924-71b2-9861-86be43bc2d1e' AND `event_type` = 'message_received';
 
 INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `actions`, `is_active`, `priority`, `cooldown_hours`, `created_at`, `updated_at`) VALUES
 
