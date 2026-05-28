@@ -101,7 +101,7 @@ class AutomationEngine
     protected function evaluateConditions(?array $conditions, array $payload, ?Contact $contact): bool
     {
         if (empty($conditions)) {
-            return true;
+            return false;
         }
 
         foreach ($conditions as $field => $expected) {
