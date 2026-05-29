@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { 
     Search, 
     MessageSquare, 
@@ -16,13 +16,66 @@ import {
     AlertCircle,
     UserCheck,
     Briefcase,
-    TrendingUp
+    TrendingUp,
+    Edit3,
+    X
 } from 'lucide-react';
 
 export default function ContactsIndex({ contacts }) {
     const [search, setSearch] = useState('');
     const [selectedTab, setSelectedTab] = useState('all'); // all, hot, customers, lost
     const [selectedContact, setSelectedContact] = useState(null);
+    const [isEditing, setIsEditing] = useState(false);
+
+    const { data, setData, put, processing, errors, reset, clearErrors, transform } = useForm({
+        name: '',
+        email: '',
+        whatsapp_phone: '',
+        funnel_stage: 'new',
+        interest_level: 'unknown',
+        tags_input: '',
+    });
+
+    transform((data) => ({
+        ...data,
+        tags: data.tags_input ? data.tags_input.split(',').map(t => t.trim()).filter(Boolean) : [],
+    }));
+
+    useEffect(() => {
+        if (selectedContact && !isEditing) {
+            const updatedContact = contacts.find(c => c.id === selectedContact.id);
+            if (updatedContact) setSelectedContact(updatedContact);
+        }
+    }, [contacts]);
+
+    const handleEditClick = () => {
+        setData({
+            name: selectedContact.name || '',
+            email: selectedContact.email || '',
+            whatsapp_phone: selectedContact.whatsapp_phone || '',
+            funnel_stage: selectedContact.funnel_stage || 'new',
+            interest_level: selectedContact.interest_level || 'unknown',
+            tags_input: Array.isArray(selectedContact.tags) ? selectedContact.tags.join(', ') : '',
+        });
+        clearErrors();
+        setIsEditing(true);
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditing(false);
+        reset();
+        clearErrors();
+    };
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        put(route('contacts.update', selectedContact.id), {
+            preserveScroll: true,
+            onSuccess: () => {
+                setIsEditing(false);
+            },
+        });
+    };
 
     // Human-readable names for funnel stages
     const stageNames = {
@@ -240,6 +293,103 @@ export default function ContactsIndex({ contacts }) {
                 {/* Right side contact details sidebar */}
                 <div className="bg-white border border-slate-200/80 rounded-2xl p-6 min-h-[500px] flex flex-col justify-between shadow-sm">
                     {selectedContact ? (
+                        isEditing ? (
+                            <form onSubmit={handleSubmit} className="flex flex-col h-full space-y-5">
+                                <h3 className="font-bold text-base text-slate-800 mb-2 flex items-center gap-2">
+                                    <Edit3 className="h-4 w-4 text-brand-teal" />
+                                    Editar Contacto
+                                </h3>
+                                
+                                <div className="space-y-4 flex-1 pr-1">
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Nombre *</label>
+                                        <input
+                                            type="text"
+                                            value={data.name}
+                                            onChange={e => setData('name', e.target.value)}
+                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                        />
+                                        {errors.name && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</div>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Teléfono</label>
+                                        <input
+                                            type="text"
+                                            value={data.whatsapp_phone}
+                                            onChange={e => setData('whatsapp_phone', e.target.value)}
+                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                        />
+                                        {errors.whatsapp_phone && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.whatsapp_phone}</div>}
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Email</label>
+                                        <input
+                                            type="email"
+                                            value={data.email}
+                                            onChange={e => setData('email', e.target.value)}
+                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                        />
+                                        {errors.email && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.email}</div>}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Fase</label>
+                                            <select
+                                                value={data.funnel_stage}
+                                                onChange={e => setData('funnel_stage', e.target.value)}
+                                                className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                            >
+                                                {Object.entries(stageNames).map(([key, value]) => (
+                                                    <option key={key} value={key}>{value}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Interés</label>
+                                            <select
+                                                value={data.interest_level}
+                                                onChange={e => setData('interest_level', e.target.value)}
+                                                className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                            >
+                                                {Object.entries(interestNames).map(([key, value]) => (
+                                                    <option key={key} value={key}>{value}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Etiquetas (separadas por coma)</label>
+                                        <input
+                                            type="text"
+                                            value={data.tags_input}
+                                            onChange={e => setData('tags_input', e.target.value)}
+                                            placeholder="ej: vip, interesado"
+                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                        />
+                                        {errors.tags_input && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.tags_input}</div>}
+                                    </div>
+                                </div>
+                                
+                                <div className="pt-4 flex gap-3 border-t border-slate-100 mt-auto">
+                                    <button
+                                        type="button"
+                                        onClick={handleCancelEdit}
+                                        className="flex-1 px-4 py-2 border border-slate-200 hover:bg-slate-100 text-slate-600 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5"
+                                    >
+                                        <X className="h-3.5 w-3.5" />
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="flex-1 px-4 py-2 bg-brand-teal hover:bg-brand-teal/90 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-1.5"
+                                    >
+                                        {processing && <span className="h-3 w-3 border-2 border-white border-t-transparent animate-spin rounded-full"></span>}
+                                        Guardar Cambios
+                                    </button>
+                                </div>
+                            </form>
+                        ) : (
                         <div className="space-y-6">
                             {/* Profile header */}
                             <div className="text-center">
@@ -336,8 +486,17 @@ export default function ContactsIndex({ contacts }) {
                                         </>
                                     )}
                                 </button>
+                                
+                                <button 
+                                    onClick={handleEditClick}
+                                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all shadow-sm"
+                                >
+                                    <Edit3 className="h-3.5 w-3.5" />
+                                    Editar Info
+                                </button>
                             </div>
                         </div>
+                        )
                     ) : (
                         <div className="my-auto text-center py-12 text-slate-400 bg-slate-50/30 border border-dashed border-slate-200 rounded-xl p-4">
                             <AlertCircle className="mx-auto h-8 w-8 text-slate-300 mb-2" />

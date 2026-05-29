@@ -17,11 +17,26 @@ use Illuminate\Support\Facades\Log;
  */
 class AutomationEngine
 {
+    protected bool $isDryRun = false;
+    protected array $dryRunLogs = [];
+
     public function __construct(
         protected N8nService $n8nService,
         protected LeadScoringService $leadScoring,
         protected AiService $aiService,
     ) {}
+
+    public function enableDryRun(): self
+    {
+        $this->isDryRun = true;
+        $this->dryRunLogs = [];
+        return $this;
+    }
+
+    public function getDryRunLogs(): array
+    {
+        return $this->dryRunLogs;
+    }
 
     /**
      * Process a domain event and execute all matching automations.
@@ -179,6 +194,17 @@ class AutomationEngine
      */
     protected function executeSingleAction(string $type, array $params, array $payload, ?Contact $contact): mixed
     {
+        if ($this->isDryRun && $type !== 'trigger_automation') {
+            // In dry run, we simulate the action but still update contact state in memory if needed
+            if ($type === 'update_funnel' && $contact) {
+                $contact->funnel_stage = $params['stage'] ?? $contact->funnel_stage;
+            } elseif ($type === 'update_score' && $contact) {
+                $delta = $params['delta'] ?? 0;
+                $contact->lead_score += $delta;
+            }
+            return ['simulated' => true, 'type' => $type, 'params' => $params];
+        }
+
         return match ($type) {
             'send_whatsapp' => $this->actionSendWhatsApp($params, $contact),
             'update_score' => $this->actionUpdateScore($params, $contact),
@@ -193,6 +219,7 @@ class AutomationEngine
             'reschedule_booking' => $this->actionRescheduleBooking($params, $contact),
             'send_schedules' => $this->actionSendSchedules($params, $contact),
             'process_booking' => $this->actionProcessBooking($params, $payload, $contact),
+            'trigger_automation' => $this->actionTriggerAutomation($params, $payload, $contact),
             default => Log::warning("Unknown action type: {$type}"),
         };
     }
@@ -649,6 +676,29 @@ class AutomationEngine
         }
     }
 
+    protected function actionTriggerAutomation(array $params, array $payload, ?Contact $contact): void
+    {
+        $automationId = $params['automation_id'] ?? null;
+        if (!$automationId) return;
+
+        // Prevent infinite loops by checking depth in payload
+        $depth = $payload['_trigger_depth'] ?? 0;
+        if ($depth > 5) {
+            Log::warning("AutomationEngine: Max trigger depth reached. Aborting trigger_automation for ID {$automationId}");
+            return;
+        }
+
+        $targetAutomation = Automation::find($automationId);
+        if (!$targetAutomation || !$targetAutomation->is_active) {
+            return;
+        }
+
+        $payload['_trigger_depth'] = $depth + 1;
+
+        // Execute the actions of the target automation directly
+        $this->executeActions($targetAutomation->actions ?? [], $payload, $contact);
+    }
+
     /**
      * Log automation execution.
      */
@@ -661,6 +711,17 @@ class AutomationEngine
         string $status,
         ?string $errorMessage = null
     ): void {
+        if ($this->isDryRun) {
+            $this->dryRunLogs[] = [
+                'automation' => $automation->toArray(),
+                'event_type' => $eventType,
+                'status' => $status,
+                'actions_executed' => $actionsExecuted,
+                'error_message' => $errorMessage,
+            ];
+            return;
+        }
+
         AutomationLog::create([
             'automation_id' => $automation->id,
             'tenant_id' => $automation->tenant_id,

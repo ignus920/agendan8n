@@ -25,6 +25,7 @@
         "@fullcalendar/timegrid": "^6.1.20",
         "@headlessui/react": "^2.2.10",
         "lucide-react": "^0.474.0",
+        "mermaid": "^11.15.0",
         "react": "^18.3.1",
         "react-dom": "^18.3.1"
     }

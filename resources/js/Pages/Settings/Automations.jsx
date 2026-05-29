@@ -1,6 +1,7 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, router } from '@inertiajs/react';
+import axios from 'axios';
 import { 
     Cpu, 
     Zap, 
@@ -22,12 +23,276 @@ import {
     Trash2
 } from 'lucide-react';
 
+const eventNames = {
+    contact_created: 'Contacto Creado',
+    contact_updated: 'Contacto Actualizado',
+    contact_score_changed: 'Score del Contacto Cambiado',
+    booking_created: 'Cita Agendada',
+    booking_confirmed: 'Cita Confirmada',
+    booking_cancelled: 'Cita Cancelada',
+    booking_completed: 'Cita Completada',
+    purchase_created: 'Compra Registrada',
+    repurchase_due: 'Alerta de Recompra Vencida',
+    lead_inactive: 'Lead Inactivo',
+    message_received: 'Mensaje Recibido (WhatsApp)',
+    campaign_sent: 'Campaña Enviada'
+};
+
+const actionNames = {
+    send_whatsapp: 'Enviar WhatsApp',
+    update_score: 'Actualizar Score',
+    update_funnel: 'Actualizar Embudo',
+    create_task: 'Crear Tarea',
+    assign_advisor: 'Asignar Asesor',
+    trigger_ai: 'Ejecutar Clasificación IA',
+    schedule_followup: 'Programar Seguimiento',
+    trigger_n8n: 'Lanzar Webhook n8n',
+    update_memory: 'Actualizar Memoria',
+    pause_bot: 'Pausar Bot IA',
+    trigger_automation: 'Llamar Otro Flujo'
+};
+
+const actionColors = {
+    send_whatsapp: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
+    trigger_n8n: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
+    trigger_ai: 'bg-blue-50 text-blue-700 border-blue-200/80',
+    update_funnel: 'bg-brand-teal-light text-brand-teal border-brand-teal/20',
+    update_score: 'bg-amber-50 text-amber-700 border-amber-200/80',
+    pause_bot: 'bg-red-50 text-red-700 border-red-200/80',
+    trigger_automation: 'bg-purple-50 text-purple-700 border-purple-200/80'
+};
+
+const GlobalMermaidDiagram = ({ automations }) => {
+    const [svg, setSvg] = useState('');
+
+    useEffect(() => {
+        const renderDiagram = async () => {
+            if (!automations || automations.length === 0) return;
+
+            let graphDefinition = 'graph TD;\n';
+            
+            // Group by event type
+            const byEvent = {};
+            automations.forEach(a => {
+                if (!byEvent[a.event_type]) byEvent[a.event_type] = [];
+                byEvent[a.event_type].push(a);
+            });
+
+            Object.keys(byEvent).forEach((eventType, i) => {
+                graphDefinition += `    subgraph Evento${i}["${eventNames[eventType] || eventType}"]\n`;
+                byEvent[eventType].forEach(a => {
+                    const nodeName = `Auto_${a.id}`;
+                    graphDefinition += `        ${nodeName}["${a.name}"]\n`;
+                });
+                graphDefinition += `    end\n`;
+            });
+
+            // Add links for trigger_automation
+            automations.forEach(a => {
+                if (a.actions) {
+                    a.actions.forEach(act => {
+                        if (act.type === 'trigger_automation' && act.params?.automation_id) {
+                            graphDefinition += `    Auto_${a.id} -->|Salta a| Auto_${act.params.automation_id}\n`;
+                        }
+                    });
+                }
+            });
+
+            try {
+                const mermaidModule = await import('mermaid');
+                const mermaid = mermaidModule.default;
+                const id = `global-mermaid-${Date.now()}`;
+                const { svg } = await mermaid.render(id, graphDefinition);
+                setSvg(svg);
+            } catch (error) {
+                console.error("Global Mermaid error:", error);
+            }
+        };
+        renderDiagram();
+    }, [automations]);
+
+    if (!svg) return <div className="p-8 text-center text-slate-400 font-bold">Generando diagrama interactivo...</div>;
+
+    return (
+        <div 
+            className="w-full flex justify-center py-4 overflow-x-auto bg-slate-50/50 rounded-xl border border-slate-100 min-h-[400px]"
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    );
+};
+
+const SimulationPanel = ({ automations }) => {
+    const [eventType, setEventType] = useState('message_received');
+    const [funnelStage, setFunnelStage] = useState('new');
+    const [leadScore, setLeadScore] = useState(0);
+    const [message, setMessage] = useState('Hola');
+    const [logs, setLogs] = useState(null);
+    const [loading, setLoading] = useState(false);
+
+    const runSimulation = async () => {
+        setLoading(true);
+        try {
+            const res = await axios.post('/settings/automations/simulate', {
+                event_type: eventType,
+                contact: {
+                    funnel_stage: funnelStage,
+                    lead_score: parseInt(leadScore),
+                    is_active: true
+                },
+                payload: {
+                    message: message
+                }
+            });
+            setLogs(res.data.logs);
+        } catch (e) {
+            console.error(e);
+            alert("Error ejecutando simulación.");
+        }
+        setLoading(false);
+    };
+
+    return (
+        <div className="space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+                <h3 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-brand-teal" />
+                    Configurar Test
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Evento Disparador</label>
+                        <select value={eventType} onChange={e=>setEventType(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-brand-teal focus:border-brand-teal p-2.5">
+                            {Object.entries(eventNames).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Mensaje Recibido (payload)</label>
+                        <input type="text" value={message} onChange={e=>setMessage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-brand-teal focus:border-brand-teal p-2.5" />
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Etapa de Embudo del Contacto</label>
+                        <select value={funnelStage} onChange={e=>setFunnelStage(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-brand-teal focus:border-brand-teal p-2.5">
+                            <option value="new">Nuevo (new)</option>
+                            <option value="interested">Interesado (interested)</option>
+                            <option value="qualified">Calificado (qualified)</option>
+                            <option value="client">Cliente (client)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Lead Score Inicial</label>
+                        <input type="number" value={leadScore} onChange={e=>setLeadScore(e.target.value)} className="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-brand-teal focus:border-brand-teal p-2.5" />
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                    <button onClick={runSimulation} disabled={loading} className="bg-brand-teal hover:bg-brand-teal/90 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all disabled:opacity-50">
+                        <Play className="h-4 w-4" />
+                        {loading ? 'Simulando...' : 'Probar Flujo'}
+                    </button>
+                </div>
+            </div>
+            
+            {logs && (
+                <div className="bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-800">
+                    <h3 className="text-emerald-400 font-bold mb-4 flex items-center gap-2">
+                        <Code className="h-5 w-5" />
+                        Trace de Simulación ({logs.length} reglas ejecutadas)
+                    </h3>
+                    <div className="space-y-4">
+                        {logs.length === 0 && <p className="text-slate-500 text-sm italic">Ninguna regla reaccionó a este evento y condiciones.</p>}
+                        {logs.map((log, idx) => (
+                            <div key={idx} className="bg-slate-800 rounded-xl p-4 border border-slate-700">
+                                <div className="flex items-center justify-between mb-3">
+                                    <span className="text-emerald-300 font-bold text-sm">{log.automation.name}</span>
+                                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${log.status === 'success' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-500/20 text-slate-400'}`}>
+                                        {log.status}
+                                    </span>
+                                </div>
+                                {log.status === 'success' && (
+                                    <div className="space-y-2 mt-3 pl-3 border-l-2 border-slate-600">
+                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Acciones Ejecutadas</p>
+                                        {log.actions_executed.map((act, i) => (
+                                            <div key={i} className="text-xs text-slate-300 bg-slate-900 p-2 rounded">
+                                                <span className="text-brand-teal font-semibold">{actionNames[act.type] || act.type}</span>
+                                                <pre className="mt-1 text-[10px] text-slate-500 font-mono overflow-x-auto">
+                                                    {JSON.stringify(act.params, null, 2)}
+                                                </pre>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                                {log.status !== 'success' && log.error_message && (
+                                    <p className="text-xs text-amber-400 mt-2 bg-amber-400/10 p-2 rounded">{log.error_message}</p>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const MermaidDiagram = ({ flow }) => {
+    const [svg, setSvg] = useState('');
+
+    useEffect(() => {
+        const renderDiagram = async () => {
+            if (!flow || !flow.actions || flow.actions.length === 0) return;
+
+            let graphDefinition = 'graph TD;\n';
+            graphDefinition += `    Start(("Evento: ${eventNames[flow.event_type] || flow.event_type}"))\n`;
+            
+            let prevNode = 'Start';
+            if (flow.conditions && Object.keys(flow.conditions).length > 0) {
+                graphDefinition += `    Cond{"Filtros"}\n`;
+                graphDefinition += `    Start --> Cond\n`;
+                prevNode = 'Cond';
+            }
+
+            flow.actions.forEach((act, index) => {
+                const nodeId = `Action${index}`;
+                const actName = actionNames[act.type] || act.type;
+                let label = actName;
+                if (act.type === 'trigger_automation') {
+                    label += ` (ID: ${act.params?.automation_id})`;
+                }
+                graphDefinition += `    ${nodeId}["${label}"]\n`;
+                graphDefinition += `    ${prevNode} --> ${nodeId}\n`;
+                prevNode = nodeId;
+            });
+
+            try {
+                const mermaidModule = await import('mermaid');
+                const mermaid = mermaidModule.default;
+                // Unique ID to avoid conflicts
+                const id = `mermaid-${flow.id}-${Date.now()}`;
+                const { svg } = await mermaid.render(id, graphDefinition);
+                setSvg(svg);
+            } catch (error) {
+                console.error("Mermaid error:", error);
+            }
+        };
+
+        renderDiagram();
+    }, [flow]);
+
+    if (!svg) return null;
+
+    return (
+        <div 
+            className="w-full flex justify-center py-4 my-4 overflow-x-auto bg-slate-50/50 rounded-xl border border-slate-100"
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    );
+};
+
 export default function AutomationsIndex({ automations, scoringRules }) {
     const [activeTab, setActiveTab] = useState('flows'); // flows, scoring
     const [selectedAutomation, setSelectedAutomation] = useState(null);
     const [isEditingJson, setIsEditingJson] = useState(false);
     const [jsonInput, setJsonInput] = useState('');
     const [jsonError, setJsonError] = useState(null);
+    const [editScoreDelta, setEditScoreDelta] = useState(0);
 
     // Refs for textareas to insert variables at cursor position
     const jsonInputRef = useRef(null);
@@ -91,48 +356,46 @@ export default function AutomationsIndex({ automations, scoringRules }) {
     const [createCooldown, setCreateCooldown] = useState(1);
     const [createError, setCreateError] = useState(null);
 
-    const eventNames = {
-        contact_created: 'Contacto Creado',
-        contact_updated: 'Contacto Actualizado',
-        contact_score_changed: 'Score del Contacto Cambiado',
-        booking_created: 'Cita Agendada',
-        booking_confirmed: 'Cita Confirmada',
-        booking_cancelled: 'Cita Cancelada',
-        booking_completed: 'Cita Completada',
-        purchase_created: 'Compra Registrada',
-        repurchase_due: 'Alerta de Recompra Vencida',
-        lead_inactive: 'Lead Inactivo',
-        message_received: 'Mensaje Recibido (WhatsApp)',
-        campaign_sent: 'Campaña Enviada'
-    };
-
-    const actionNames = {
-        send_whatsapp: 'Enviar WhatsApp',
-        update_score: 'Actualizar Score',
-        update_funnel: 'Actualizar Embudo',
-        create_task: 'Crear Tarea',
-        assign_advisor: 'Asignar Asesor',
-        trigger_ai: 'Ejecutar Clasificación IA',
-        schedule_followup: 'Programar Seguimiento',
-        trigger_n8n: 'Lanzar Webhook n8n',
-        update_memory: 'Actualizar Memoria',
-        pause_bot: 'Pausar Bot IA'
-    };
-
-    const actionColors = {
-        send_whatsapp: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-        trigger_n8n: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
-        trigger_ai: 'bg-blue-50 text-blue-700 border-blue-200/80',
-        update_funnel: 'bg-brand-teal-light text-brand-teal border-brand-teal/20',
-        update_score: 'bg-amber-50 text-amber-700 border-amber-200/80',
-        pause_bot: 'bg-red-50 text-red-700 border-red-200/80'
-    };
-
     const handleOpenEdit = (automation) => {
         setSelectedAutomation(automation);
         setJsonInput(JSON.stringify(automation.actions, null, 4));
         setIsEditingJson(true);
         setJsonError(null);
+    };
+
+    const handleOpenEditScoring = (rule) => {
+        setSelectedAutomation(rule);
+        setJsonInput(JSON.stringify(rule.condition || {}, null, 4));
+        setEditScoreDelta(rule.score_delta);
+        setIsEditingJson(true);
+        setJsonError(null);
+    };
+
+    const handleSaveScoring = () => {
+        try {
+            const parsedCondition = JSON.parse(jsonInput || '{}');
+            
+            router.put(route('settings.automations.update', selectedAutomation.id), {
+                rule_type: 'scoring',
+                name: selectedAutomation.name,
+                event_type: selectedAutomation.event_type,
+                condition: parsedCondition,
+                score_delta: parseInt(editScoreDelta),
+                is_active: selectedAutomation.is_active,
+            }, {
+                preserveScroll: true,
+                onSuccess: () => {
+                    setIsEditingJson(false);
+                    setSelectedAutomation(prev => ({ 
+                        ...prev, 
+                        condition: parsedCondition,
+                        score_delta: parseInt(editScoreDelta)
+                    }));
+                }
+            });
+        } catch (e) {
+            setJsonError("JSON Inválido: " + e.message);
+        }
     };
 
     const handleSaveJson = () => {
@@ -162,6 +425,18 @@ export default function AutomationsIndex({ automations, scoringRules }) {
             setJsonError(e.message);
         }
     };
+
+    useEffect(() => {
+        import('mermaid').then(mermaidModule => {
+            const mermaid = mermaidModule.default;
+            mermaid.initialize({
+                startOnLoad: false,
+                theme: 'default',
+                securityLevel: 'loose',
+                fontFamily: 'Inter, sans-serif'
+            });
+        });
+    }, []);
 
     const handleToggleActive = (item, type) => {
         const url = route('settings.automations.update', item.id);
@@ -289,6 +564,28 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                     )}
                 </button>
                 <button
+                    onClick={() => { setActiveTab('global'); setSelectedAutomation(null); setIsEditingJson(false); }}
+                    className={`pb-4 text-sm font-bold relative transition-colors ${
+                        activeTab === 'global' ? 'text-brand-teal font-extrabold' : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                >
+                    Vista Global
+                    {activeTab === 'global' && (
+                        <span className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-teal shadow-[0_0_8px_rgba(70,164,189,0.5)]"></span>
+                    )}
+                </button>
+                <button
+                    onClick={() => { setActiveTab('simulator'); setSelectedAutomation(null); setIsEditingJson(false); }}
+                    className={`pb-4 text-sm font-bold relative transition-colors ${
+                        activeTab === 'simulator' ? 'text-brand-teal font-extrabold' : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                >
+                    Simulador
+                    {activeTab === 'simulator' && (
+                        <span className="absolute bottom-0 inset-x-0 h-0.5 bg-brand-teal shadow-[0_0_8px_rgba(70,164,189,0.5)]"></span>
+                    )}
+                </button>
+                <button
                     onClick={() => { setActiveTab('scoring'); setSelectedAutomation(null); setIsEditingJson(false); }}
                     className={`pb-4 text-sm font-bold relative transition-colors ${
                         activeTab === 'scoring' ? 'text-brand-teal font-extrabold' : 'text-slate-400 hover:text-slate-700'
@@ -301,10 +598,14 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-                {/* Left Listing Panel */}
-                <div className="xl:col-span-2 space-y-5">
-                    {activeTab === 'flows' ? (
+            <div className="max-w-5xl">
+                {activeTab === 'global' ? (
+                    <GlobalMermaidDiagram automations={automations} />
+                ) : activeTab === 'simulator' ? (
+                    <SimulationPanel automations={automations} />
+                ) : (
+                    <div className="space-y-5">
+                        {activeTab === 'flows' ? (
                         /* Flows Listing */
                         <div className="space-y-4">
                             {automations.map((flow) => {
@@ -323,29 +624,6 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                             <div>
                                                 <div className="flex items-center gap-2.5">
                                                     <h3 className="font-bold text-sm text-slate-800">{flow.name}</h3>
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleToggleActive(flow, 'flow');
-                                                        }}
-                                                        className={`text-[9px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
-                                                            flow.is_active 
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' 
-                                                                : 'bg-slate-100 text-slate-450 border-slate-200 hover:bg-slate-200'
-                                                        }`}
-                                                    >
-                                                        {flow.is_active ? 'Activo' : 'Inactivo'}
-                                                    </button>
-                                                    <button
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            handleDelete(flow.id, 'flow');
-                                                        }}
-                                                        className="text-slate-400 hover:text-red-650 p-1 transition-colors"
-                                                        title="Eliminar"
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5" />
-                                                    </button>
                                                 </div>
                                                 <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
                                                     <span className="font-semibold">Disparador:</span>
@@ -379,18 +657,34 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                                 <div className="text-xs text-slate-400 italic">Sin condiciones restrictivas (Ejecuta siempre)</div>
                                             )}
 
-                                            {/* Actions Sequence Preview */}
-                                            <div className="flex items-center gap-2 text-xs mt-1">
-                                                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ENTONCES:</span>
-                                                <div className="flex items-center gap-1.5 flex-wrap font-semibold">
-                                                    {flow.actions.map((act, index) => (
-                                                        <div key={index} className="flex items-center gap-1.5">
-                                                            {index > 0 && <ArrowRight className="h-3 w-3 text-slate-350" />}
-                                                            <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${actionColors[act.type] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
-                                                                {actionNames[act.type] || act.type}
-                                                            </span>
-                                                        </div>
-                                                    ))}
+                                            {/* Actions Sequence Preview & Switch */}
+                                            <div className="flex items-center justify-between mt-1">
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ENTONCES:</span>
+                                                    <div className="flex items-center gap-1.5 flex-wrap font-semibold">
+                                                        {flow.actions.map((act, index) => (
+                                                            <div key={index} className="flex items-center gap-1.5">
+                                                                {index > 0 && <ArrowRight className="h-3 w-3 text-slate-350" />}
+                                                                <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${actionColors[act.type] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                                    {actionNames[act.type] || act.type}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
+                                                        {flow.is_active ? 'Activo' : 'Inactivo'}
+                                                    </span>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggleActive(flow, 'flow');
+                                                        }}
+                                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${flow.is_active ? 'bg-brand-teal' : 'bg-slate-300'}`}
+                                                    >
+                                                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${flow.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
+                                                    </button>
                                                 </div>
                                             </div>
                                         </div>
@@ -400,76 +694,120 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                         </div>
                     ) : (
                         /* Lead Scoring Rules Listing */
-                        <div className="bg-white border border-slate-200/80 rounded-2xl overflow-hidden shadow-sm">
-                            <table className="w-full text-left border-collapse">
-                                <thead>
-                                    <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 text-[11px] font-bold uppercase tracking-wider">
-                                        <th className="px-6 py-4">Regla / Acción</th>
-                                        <th className="px-6 py-4">Evento Detonante</th>
-                                        <th className="px-6 py-4 text-center">Score Delta</th>
-                                        <th className="px-6 py-4 text-right">Estado</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-100 text-xs font-semibold text-slate-755">
-                                    {scoringRules.map((rule) => {
-                                        const isPositive = rule.score_delta > 0;
-                                        return (
-                                            <tr key={rule.id} className="hover:bg-slate-50/50">
-                                                <td className="px-6 py-4">
-                                                    <div className="font-bold text-slate-800">{rule.name}</div>
-                                                    {rule.condition && Object.keys(rule.condition).length > 0 && (
-                                                        <div className="text-[10px] text-slate-450 font-mono mt-0.5 font-normal">
-                                                            Condición: {JSON.stringify(rule.condition)}
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="px-6 py-4 text-slate-500 font-mono">
-                                                    {eventNames[rule.event_type] || rule.event_type}
-                                                </td>
-                                                <td className="px-6 py-4 text-center">
-                                                    <span className={`font-mono font-bold text-xs px-2 py-0.5 rounded border ${
-                                                        isPositive 
-                                                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
-                                                            : 'bg-red-50 text-red-700 border-red-200'
-                                                    }`}>
-                                                        {isPositive ? `+${rule.score_delta}` : rule.score_delta} pts
+                        <div className="space-y-4">
+                            {scoringRules.map((rule) => {
+                                const isPositive = rule.score_delta > 0;
+                                const isSelected = selectedAutomation?.id === rule.id;
+                                return (
+                                    <div 
+                                        key={rule.id} 
+                                        onClick={() => setSelectedAutomation(rule)}
+                                        className={`bg-white border rounded-2xl p-5 cursor-pointer transition-all duration-300 shadow-sm ${
+                                            isSelected 
+                                                ? 'border-brand-teal/40 bg-brand-teal-light/15 shadow-sm' 
+                                                : 'border-slate-200/80 hover:border-slate-350 hover:bg-slate-50/50'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div>
+                                                <div className="flex items-center gap-2.5">
+                                                    <h3 className="font-bold text-sm text-slate-800">{rule.name}</h3>
+                                                </div>
+                                                <div className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
+                                                    <span className="font-semibold">Disparador:</span>
+                                                    <span className="text-brand-teal font-extrabold font-mono">{eventNames[rule.event_type] || rule.event_type}</span>
+                                                </div>
+                                            </div>
+
+                                            <div className="text-right flex flex-col items-end gap-1">
+                                                <span className={`font-mono font-bold text-xs px-2.5 py-1 rounded-md border shadow-sm ${
+                                                    isPositive 
+                                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' 
+                                                        : 'bg-red-50 text-red-700 border-red-200/80'
+                                                }`}>
+                                                    {isPositive ? `+${rule.score_delta}` : rule.score_delta} pts
+                                                </span>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-slate-100 my-4"></div>
+
+                                        <div className="flex flex-col gap-2.5">
+                                            {/* Conditions */}
+                                            {rule.condition && Object.keys(rule.condition).length > 0 ? (
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">SI:</span>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {Object.entries(rule.condition).map(([key, val]) => (
+                                                            <span key={key} className="bg-slate-50 border border-slate-200 px-2 py-0.5 rounded text-[10px] text-slate-650 font-mono font-semibold">
+                                                                {key} == "{val}"
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="text-xs text-slate-400 italic">Sin condiciones restrictivas (Ejecuta siempre)</div>
+                                            )}
+
+                                            {/* Action Preview & Switch */}
+                                            <div className="flex items-center justify-between mt-1">
+                                                <div className="flex items-center gap-2 text-xs">
+                                                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">ENTONCES:</span>
+                                                    <span className={`text-[10px] px-2 py-0.5 rounded-md font-bold border ${actionColors['update_score'] || 'bg-slate-50 text-slate-600 border-slate-200'}`}>
+                                                        Actualizar Score
                                                     </span>
-                                                </td>
-                                                <td className="px-6 py-4 text-right flex items-center justify-end gap-3">
-                                                    <button
-                                                        onClick={() => handleToggleActive(rule, 'scoring')}
-                                                        className={`text-[10px] px-2 py-0.5 rounded-full font-bold border transition-colors ${
-                                                            rule.is_active 
-                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-250 hover:bg-emerald-100' 
-                                                                : 'bg-slate-100 text-slate-500 border-slate-200 hover:bg-slate-200'
-                                                        }`}
-                                                    >
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">
                                                         {rule.is_active ? 'Activo' : 'Inactivo'}
-                                                    </button>
+                                                    </span>
                                                     <button
-                                                        onClick={() => handleDelete(rule.id, 'scoring')}
-                                                        className="text-slate-400 hover:text-red-650 p-1 transition-colors"
-                                                        title="Eliminar"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleToggleActive(rule, 'scoring');
+                                                        }}
+                                                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${rule.is_active ? 'bg-brand-teal' : 'bg-slate-300'}`}
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${rule.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
                                                     </button>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
                 </div>
+                )}
+            </div>
 
-                {/* Right side JSON Detail editor / Documentation */}
-                <div className="xl:col-span-1 h-full relative">
-                    <div className="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm sticky top-6">
-                        {selectedAutomation ? (
-                        <div className="space-y-6">
-                            <div>
-                                <div className="text-xs text-brand-teal font-extrabold font-mono uppercase tracking-wider">Detalles de la Automatización</div>
+            {/* Right side JSON Detail editor Drawer */}
+            {selectedAutomation && (
+                <div className="fixed inset-0 z-[100] flex justify-end">
+                    <div 
+                        className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
+                        onClick={() => setSelectedAutomation(null)}
+                    ></div>
+                    <div className="relative w-full md:w-[450px] bg-white h-full shadow-2xl flex flex-col border-l border-slate-200 animate-slide-in">
+                        <div className="flex items-center justify-between p-4 border-b border-slate-100 bg-slate-50 shrink-0">
+                            <h3 className="font-bold text-slate-800 flex items-center gap-2 text-sm">
+                                <Settings className="h-4 w-4 text-brand-teal" />
+                                {activeTab === 'scoring' ? 'Detalles de la Regla' : 'Detalles de Automatización'}
+                            </h3>
+                            <button 
+                                onClick={() => setSelectedAutomation(null)}
+                                className="p-1.5 rounded-lg hover:bg-slate-200 text-slate-500 transition-colors"
+                            >
+                                <X className="h-5 w-5" />
+                            </button>
+                        </div>
+                        <div className="flex-1 overflow-y-auto p-6">
+                            <div className="space-y-6">
+                                <div>
+                                <div className="text-xs text-brand-teal font-extrabold font-mono uppercase tracking-wider">
+                                    {activeTab === 'scoring' ? 'Detalles de la Regla de Scoring' : 'Detalles de la Automatización'}
+                                </div>
                                 <h3 className="font-bold text-base text-slate-800 mt-1">{selectedAutomation.name}</h3>
                                 <p className="text-xs text-slate-600 mt-1.5 font-mono bg-slate-50 p-2 rounded border border-slate-200">
                                     Trigger: {selectedAutomation.event_type}
@@ -479,7 +817,86 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                             <div className="h-px bg-slate-100"></div>
 
                             {/* JSON Editor Box */}
-                            {isEditingJson ? (
+                            {activeTab === 'scoring' ? (
+                                isEditingJson ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                                                <Code className="h-3.5 w-3.5 text-brand-teal" />
+                                                Editar Regla de Scoring
+                                            </label>
+                                            <button 
+                                                onClick={() => setIsEditingJson(false)} 
+                                                className="text-[10px] text-slate-450 hover:text-slate-700 font-bold underline"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                        
+                                        <div>
+                                            <label className="block text-[11px] text-slate-555 mb-1 font-bold">Condición (JSON)</label>
+                                            <textarea
+                                                value={jsonInput}
+                                                onChange={(e) => setJsonInput(e.target.value)}
+                                                rows="5"
+                                                className="font-mono text-xs w-full bg-slate-900 border border-slate-200 rounded-xl p-3 text-slate-100 focus:outline-none focus:border-brand-teal"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[11px] text-slate-555 mb-1 font-bold">Score Delta</label>
+                                            <input
+                                                type="number"
+                                                value={editScoreDelta}
+                                                onChange={(e) => setEditScoreDelta(e.target.value)}
+                                                className="block w-full p-2 border border-slate-250 rounded-xl text-xs"
+                                            />
+                                        </div>
+
+                                        {jsonError && (
+                                            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-xs flex items-start gap-2">
+                                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                                <span className="font-mono font-semibold">{jsonError}</span>
+                                            </div>
+                                        )}
+
+                                        <div className="flex gap-2">
+                                            <button 
+                                                onClick={handleSaveScoring}
+                                                className="flex-1 text-xs bg-brand-teal hover:bg-brand-teal/90 text-white font-bold py-2 rounded-xl transition-all shadow-sm"
+                                            >
+                                                Guardar Cambios
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Configuración</span>
+                                            <button 
+                                                onClick={() => handleOpenEditScoring(selectedAutomation)}
+                                                className="text-[10px] text-brand-teal hover:underline flex items-center gap-1 font-bold"
+                                            >
+                                                <Code className="h-3 w-3" />
+                                                Editar Regla
+                                            </button>
+                                        </div>
+                                        <div className="bg-slate-50/40 border border-slate-150 p-4 rounded-xl shadow-sm space-y-3">
+                                            <div>
+                                                <span className="text-[11px] font-bold text-slate-500">Score Delta:</span>
+                                                <span className={`ml-2 font-mono font-bold text-xs px-2 py-0.5 rounded border ${selectedAutomation.score_delta > 0 ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-red-50 text-red-700 border-red-200'}`}>
+                                                    {selectedAutomation.score_delta > 0 ? `+${selectedAutomation.score_delta}` : selectedAutomation.score_delta} pts
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <span className="text-[11px] font-bold text-slate-500">Condición:</span>
+                                                <pre className="mt-2 p-2 bg-slate-900 text-slate-100 rounded text-xs font-mono overflow-x-auto">
+                                                    {JSON.stringify(selectedAutomation.condition, null, 2)}
+                                                </pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )
+                            ) : isEditingJson ? (
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between">
                                         <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
@@ -533,6 +950,8 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                         </button>
                                     </div>
 
+                                    <MermaidDiagram flow={selectedAutomation} />
+
                                     {/* Vertical Steps */}
                                     <div className="space-y-4 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
                                         {selectedAutomation.actions.map((act, index) => (
@@ -563,20 +982,11 @@ export default function AutomationsIndex({ automations, scoringRules }) {
                                     </div>
                                 </div>
                             )}
+                            </div>
                         </div>
-                    ) : (
-                        /* Informational placeholder when no automation is selected */
-                        <div className="my-auto text-center py-12 text-slate-400 flex flex-col justify-center h-full bg-slate-50/30 border border-dashed border-slate-200 rounded-xl p-4">
-                            <Cpu className="mx-auto h-8 w-8 text-slate-300 mb-2" />
-                            <h3 className="font-bold text-slate-700 text-xs">Motor de Flujos Autónomos</h3>
-                            <p className="text-[11px] text-slate-450 mt-2 max-w-xs mx-auto leading-relaxed font-semibold">
-                                El sistema ejecuta reglas JSON ordenadas por prioridad cuando ocurren eventos en WhatsApp o en la agenda. Selecciona un flujo para ver o editar sus acciones.
-                            </p>
-                        </div>
-                    )}
+                    </div>
                 </div>
-                </div>
-            </div>
+            )}
 
             {/* Create Rule Modal */}
             {showCreateModal && (

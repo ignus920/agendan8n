@@ -28,12 +28,17 @@ class ProductController extends Controller
             'duration_minutes' => 'nullable|integer|min:1',
             'repurchase_frequency_days' => 'nullable|integer|min:1',
             'tags' => 'nullable|array',
-            'images' => 'nullable|array',
+            'image_file' => 'nullable|image|max:5120',
             'is_featured' => 'boolean',
             'status' => 'required|string|in:active,inactive',
             'sort_order' => 'integer',
             'metadata' => 'nullable|array',
         ]);
+
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $validated['images'] = ['/storage/' . $path];
+        }
 
         Product::create($validated);
 
@@ -49,12 +54,17 @@ class ProductController extends Controller
             'duration_minutes' => 'nullable|integer|min:1',
             'repurchase_frequency_days' => 'nullable|integer|min:1',
             'tags' => 'nullable|array',
-            'images' => 'nullable|array',
+            'image_file' => 'nullable|image|max:5120',
             'is_featured' => 'boolean',
             'status' => 'required|string|in:active,inactive',
             'sort_order' => 'integer',
             'metadata' => 'nullable|array',
         ]);
+
+        if ($request->hasFile('image_file')) {
+            $path = $request->file('image_file')->store('products', 'public');
+            $validated['images'] = ['/storage/' . $path];
+        }
 
         $product->update($validated);
 

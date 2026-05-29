@@ -10,7 +10,7 @@ INSERT INTO `automations` (`tenant_id`, `name`, `event_type`, `conditions`, `act
 -- 1. MENÚ PRINCIPAL (PRIORIDAD 10)
 -- ==========================================
 ('019f514e-7924-71b2-9861-86be43bc2d1e', 'Menú Principal (Bienvenida)', 'message_received', 
-'{"message": "regex:/^(hola|buenas|informacion|buen dia|buenas tardes|buenas noches|info|menu|menú|inicio|quiero mas informacion)/i"}', 
+'{"message": "regex:/^quiero mas informacion sobre el sistema autonomo comercial$/i"}', 
 '[
   {
     "type": "send_whatsapp",

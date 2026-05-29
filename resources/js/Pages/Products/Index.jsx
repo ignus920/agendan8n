@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { 
     Package, 
     Plus, 
@@ -20,14 +20,14 @@ export default function ProductsIndex({ products }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState(null);
 
-    const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors } = useForm({
+    const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         name: '',
         description: '',
         price: '',
         duration_minutes: '',
         repurchase_frequency_days: '',
         tags_input: '',
-        image_url: '',
+        image_file: null,
         is_featured: false,
         status: 'active',
         sort_order: 0,
@@ -50,7 +50,7 @@ export default function ProductsIndex({ products }) {
             duration_minutes: product.duration_minutes || '',
             repurchase_frequency_days: product.repurchase_frequency_days || '',
             tags_input: Array.isArray(product.tags) ? product.tags.join(', ') : '',
-            image_url: Array.isArray(product.images) && product.images.length > 0 ? product.images[0] : '',
+            image_file: null,
             is_featured: !!product.is_featured,
             status: product.status || 'active',
             sort_order: product.sort_order || 0,
@@ -71,31 +71,54 @@ export default function ProductsIndex({ products }) {
         const tags = data.tags_input 
             ? data.tags_input.split(',').map(t => t.trim()).filter(Boolean)
             : [];
-        const images = data.image_url ? [data.image_url] : [];
 
-        const payload = {
-            ...data,
-            tags,
-            images,
-        };
+        const formData = new FormData();
+        formData.append('name', data.name);
+        formData.append('description', data.description || '');
+        formData.append('price', data.price || '');
+        formData.append('duration_minutes', data.duration_minutes || '');
+        formData.append('repurchase_frequency_days', data.repurchase_frequency_days || '');
+        formData.append('status', data.status);
+        formData.append('sort_order', data.sort_order);
+        formData.append('is_featured', data.is_featured ? '1' : '0');
+        
+        tags.forEach((tag, i) => formData.append(`tags[${i}]`, tag));
+        
+        if (data.image_file) {
+            formData.append('image_file', data.image_file);
+        }
 
         if (editingProduct) {
-            put(route('products.update', editingProduct.id), {
-                data: payload,
+            formData.append('_method', 'PUT');
+            router.post(route('products.update', editingProduct.id), formData, {
                 onSuccess: () => closeModal(),
             });
         } else {
-            post(route('products.store'), {
-                data: payload,
+            router.post(route('products.store'), formData, {
                 onSuccess: () => closeModal(),
             });
         }
     };
 
-    const handleDelete = (productId) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este producto?')) {
-            destroy(route('products.destroy', productId));
+    const handleToggleStatus = (product) => {
+        const formData = new FormData();
+        formData.append('name', product.name);
+        formData.append('description', product.description || '');
+        formData.append('price', product.price || '');
+        formData.append('duration_minutes', product.duration_minutes || '');
+        formData.append('repurchase_frequency_days', product.repurchase_frequency_days || '');
+        formData.append('status', product.status === 'active' ? 'inactive' : 'active');
+        formData.append('sort_order', product.sort_order || 0);
+        formData.append('is_featured', product.is_featured ? '1' : '0');
+        
+        if (Array.isArray(product.tags)) {
+            product.tags.forEach((tag, i) => formData.append(`tags[${i}]`, tag));
         }
+
+        formData.append('_method', 'PUT');
+        router.post(route('products.update', product.id), formData, {
+            preserveScroll: true,
+        });
     };
 
     const formatPrice = (price) => {
@@ -229,20 +252,26 @@ export default function ProductsIndex({ products }) {
                                 </div>
 
                                 {/* Card Footer Actions */}
-                                <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end">
+                                <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-500">
+                                            {product.status === 'active' ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                        {/* Toggle Switch */}
+                                        <button
+                                            onClick={() => handleToggleStatus(product)}
+                                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${product.status === 'active' ? 'bg-brand-teal' : 'bg-slate-300'}`}
+                                            title={product.status === 'active' ? 'Desactivar Producto' : 'Activar Producto'}
+                                        >
+                                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${product.status === 'active' ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
                                     <button
                                         onClick={() => openEditModal(product)}
                                         className="p-1.5 text-slate-500 hover:text-brand-teal hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors"
                                         title="Editar Producto"
                                     >
                                         <Edit3 className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(product.id)}
-                                        className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors"
-                                        title="Eliminar Producto"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
@@ -340,22 +369,23 @@ export default function ProductsIndex({ products }) {
                                         </div>
                                     </div>
 
-                                    {/* Image URL */}
+                                    {/* Image File */}
                                     <div>
-                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">URL de la Imagen</label>
-                                        <div className="relative">
-                                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                                                <ImageIcon className="h-4 w-4" />
-                                            </span>
-                                            <input
-                                                type="url"
-                                                value={data.image_url}
-                                                onChange={e => setData('image_url', e.target.value)}
-                                                placeholder="https://ejemplo.com/imagen.jpg"
-                                                className="block w-full pl-10 pr-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
-                                            />
-                                        </div>
-                                        {errors.image_url && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.image_url}</div>}
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Imagen del Producto</label>
+                                        
+                                        {editingProduct && Array.isArray(editingProduct.images) && editingProduct.images.length > 0 && (
+                                            <div className="mb-3">
+                                                <img src={editingProduct.images[0]} alt="Current" className="h-20 w-20 object-cover rounded-xl border border-slate-200 shadow-sm" />
+                                            </div>
+                                        )}
+
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            onChange={e => setData('image_file', e.target.files[0])}
+                                            className="block w-full text-sm text-slate-500 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-brand-teal/10 file:text-brand-teal hover:file:bg-brand-teal/20 transition-colors cursor-pointer"
+                                        />
+                                        {errors.image_file && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.image_file}</div>}
                                     </div>
 
                                     {/* Tags */}
@@ -376,30 +406,15 @@ export default function ProductsIndex({ products }) {
                                         {errors.tags_input && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.tags_input}</div>}
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-4">
-                                        {/* Status */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Estado</label>
-                                            <select
-                                                value={data.status}
-                                                onChange={e => setData('status', e.target.value)}
-                                                className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
-                                            >
-                                                <option value="active">Activo</option>
-                                                <option value="inactive">Inactivo</option>
-                                            </select>
-                                        </div>
-
-                                        {/* Sort Order */}
-                                        <div>
-                                            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Orden de visualización</label>
-                                            <input
-                                                type="number"
-                                                value={data.sort_order}
-                                                onChange={e => setData('sort_order', e.target.value)}
-                                                className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
-                                            />
-                                        </div>
+                                    {/* Sort Order */}
+                                    <div>
+                                        <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Orden de visualización</label>
+                                        <input
+                                            type="number"
+                                            value={data.sort_order}
+                                            onChange={e => setData('sort_order', e.target.value)}
+                                            className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                        />
                                     </div>
 
                                     {/* Featured Checkbox */}

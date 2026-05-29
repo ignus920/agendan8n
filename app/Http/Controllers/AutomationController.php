@@ -103,4 +103,39 @@ class AutomationController extends Controller
 
         return redirect()->back()->with('success', 'Regla eliminada con éxito.');
     }
+
+    public function simulate(Request $request, \App\Services\AutomationEngine $engine)
+    {
+        $validated = $request->validate([
+            'event_type' => 'required|string|max:100',
+            'contact.funnel_stage' => 'nullable|string',
+            'contact.lead_score' => 'nullable|integer',
+            'contact.is_active' => 'nullable|boolean',
+            'payload' => 'nullable|array',
+        ]);
+
+        $tenantId = $request->user()->tenant_id;
+        
+        $contact = new \App\Models\Contact([
+            'tenant_id' => $tenantId,
+            'name' => 'Contacto Simulado',
+            'whatsapp_phone' => '1234567890',
+            'funnel_stage' => $validated['contact']['funnel_stage'] ?? 'new',
+            'lead_score' => $validated['contact']['lead_score'] ?? 0,
+            'is_active' => $validated['contact']['is_active'] ?? true,
+        ]);
+        
+        $contact->id = 999999; // Mock ID
+
+        $payload = array_merge($validated['payload'] ?? [], [
+            'tenant_id' => $tenantId,
+        ]);
+
+        $engine->enableDryRun();
+        $engine->processEvent($validated['event_type'], $payload, $contact);
+
+        return response()->json([
+            'logs' => $engine->getDryRunLogs()
+        ]);
+    }
 }

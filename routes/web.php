@@ -28,9 +28,11 @@ Route::middleware(['auth', 'verified', 'tenant'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    Route::put('/contacts/{contact}', [ContactController::class, 'update'])->name('contacts.update');
     Route::get('/bookings', [BookingController::class, 'index'])->name('bookings.index');
     Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update');
     Route::get('/settings/automations', [AutomationController::class, 'index'])->name('settings.automations');
+    Route::post('/settings/automations/simulate', [AutomationController::class, 'simulate'])->name('settings.automations.simulate');
     Route::post('/settings/automations', [AutomationController::class, 'store'])->name('settings.automations.store');
     Route::put('/settings/automations/{id}', [AutomationController::class, 'update'])->name('settings.automations.update');
     Route::delete('/settings/automations/{id}', [AutomationController::class, 'destroy'])->name('settings.automations.destroy');

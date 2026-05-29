@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm } from '@inertiajs/react';
+import { Head, useForm, router } from '@inertiajs/react';
 import { 
     Users, 
     Plus, 
@@ -98,10 +98,19 @@ export default function ResourcesIndex({ resources, types }) {
         }
     };
 
-    const handleDelete = (resourceId) => {
-        if (confirm('¿Estás seguro de que deseas eliminar este recurso?')) {
-            destroy(route('resources.destroy', resourceId));
-        }
+    const handleToggleStatus = (resource) => {
+        const payload = {
+            name: resource.name,
+            type: resource.type,
+            description: resource.description || '',
+            capacity: resource.capacity || 1,
+            is_active: !resource.is_active,
+            metadata: resource.metadata || {},
+        };
+        
+        router.put(route('resources.update', resource.id), payload, {
+            preserveScroll: true,
+        });
     };
 
     // Return appropriate icon depending on resource type
@@ -190,14 +199,6 @@ export default function ResourcesIndex({ resources, types }) {
                                             </div>
                                         </div>
 
-                                        {/* Active Badge */}
-                                        <span className={`px-2 py-0.5 rounded-lg text-[9px] font-bold border shadow-sm ${
-                                            resource.is_active 
-                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200/80' 
-                                                : 'bg-slate-100 text-slate-500 border-slate-200/80'
-                                        }`}>
-                                            {resource.is_active ? 'Activo' : 'Inactivo'}
-                                        </span>
                                     </div>
 
                                     {/* Description */}
@@ -238,20 +239,26 @@ export default function ResourcesIndex({ resources, types }) {
                                 </div>
 
                                 {/* Card Footer Actions */}
-                                <div className="px-5 py-3 bg-slate-50 border-t border-slate-100 flex gap-2 justify-end">
+                                <div className="px-5 py-3.5 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-semibold text-slate-500">
+                                            {resource.is_active ? 'Activo' : 'Inactivo'}
+                                        </span>
+                                        {/* Toggle Switch */}
+                                        <button
+                                            onClick={() => handleToggleStatus(resource)}
+                                            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${resource.is_active ? 'bg-brand-teal' : 'bg-slate-300'}`}
+                                            title={resource.is_active ? 'Desactivar Recurso' : 'Activar Recurso'}
+                                        >
+                                            <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${resource.is_active ? 'translate-x-4' : 'translate-x-0'}`} />
+                                        </button>
+                                    </div>
                                     <button
                                         onClick={() => openEditModal(resource)}
                                         className="p-1.5 text-slate-500 hover:text-brand-teal hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors"
                                         title="Editar Recurso"
                                     >
                                         <Edit3 className="h-4 w-4" />
-                                    </button>
-                                    <button
-                                        onClick={() => handleDelete(resource.id)}
-                                        className="p-1.5 text-slate-500 hover:text-red-500 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-colors"
-                                        title="Eliminar Recurso"
-                                    >
-                                        <Trash2 className="h-4 w-4" />
                                     </button>
                                 </div>
                             </div>
@@ -390,19 +397,6 @@ export default function ResourcesIndex({ resources, types }) {
                                         </div>
                                     )}
 
-                                    {/* Active Checkbox */}
-                                    <div className="flex items-center gap-2 pt-2">
-                                        <input
-                                            type="checkbox"
-                                            id="is_active"
-                                            checked={data.is_active}
-                                            onChange={e => setData('is_active', e.target.checked)}
-                                            className="h-4 w-4 rounded border-slate-300 text-brand-teal focus:ring-brand-teal"
-                                        />
-                                        <label htmlFor="is_active" className="text-xs font-bold text-slate-700 cursor-pointer select-none">
-                                            Recurso activo (Disponible para agendamiento)
-                                        </label>
-                                    </div>
                                 </div>
 
                                 {/* Modal Footer */}

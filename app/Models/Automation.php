@@ -55,6 +55,7 @@ class Automation extends Model
         'pause_bot' => 'Pausar bot',
         'send_schedules' => 'Enviar Horarios Disponibles',
         'process_booking' => 'Procesar Agendamiento',
+        'trigger_automation' => 'Llamar otro flujo',
     ];
 
     public function logs(): HasMany
