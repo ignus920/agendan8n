@@ -35,7 +35,8 @@ const eventNames = {
     repurchase_due: 'Alerta de Recompra Vencida',
     lead_inactive: 'Lead Inactivo',
     message_received: 'Mensaje Recibido (WhatsApp)',
-    campaign_sent: 'Campaña Enviada'
+    campaign_sent: 'Campaña Enviada',
+    campaign_started: 'Campaña de Seguimiento Iniciada'
 };
 
 const actionNames = {
@@ -49,7 +50,8 @@ const actionNames = {
     trigger_n8n: 'Lanzar Webhook n8n',
     update_memory: 'Actualizar Memoria',
     pause_bot: 'Pausar Bot IA',
-    trigger_automation: 'Llamar Otro Flujo'
+    trigger_automation: 'Llamar Otro Flujo',
+    start_campaign: 'Iniciar Campaña de Seguimiento'
 };
 
 const actionColors = {
@@ -59,7 +61,8 @@ const actionColors = {
     update_funnel: 'bg-brand-teal-light text-brand-teal border-brand-teal/20',
     update_score: 'bg-amber-50 text-amber-700 border-amber-200/80',
     pause_bot: 'bg-red-50 text-red-700 border-red-200/80',
-    trigger_automation: 'bg-purple-50 text-purple-700 border-purple-200/80'
+    trigger_automation: 'bg-purple-50 text-purple-700 border-purple-200/80',
+    start_campaign: 'bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200/80'
 };
 
 const GlobalMermaidDiagram = ({ automations }) => {

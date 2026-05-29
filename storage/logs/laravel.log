@@ -875,3 +875,4 @@
 "} 
 [2026-05-29 16:53:43] local.INFO: AutomationEngine: Stopping further rules propagation because action 'send_whatsapp' was executed for automation ID 1  
 [2026-05-29 16:53:52] local.INFO: AutomationEngine: Stopping further rules propagation because action 'send_whatsapp' was executed for automation ID 1  
+[2026-05-29 17:22:42] local.INFO: AutomationEngine: Stopping further rules propagation because action 'send_whatsapp' was executed for automation ID 1  

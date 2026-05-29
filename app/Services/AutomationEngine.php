@@ -220,6 +220,7 @@ class AutomationEngine
             'send_schedules' => $this->actionSendSchedules($params, $contact),
             'process_booking' => $this->actionProcessBooking($params, $payload, $contact),
             'trigger_automation' => $this->actionTriggerAutomation($params, $payload, $contact),
+            'start_campaign' => $this->actionStartCampaign($params, $contact),
             default => Log::warning("Unknown action type: {$type}"),
         };
     }
@@ -697,6 +698,30 @@ class AutomationEngine
 
         // Execute the actions of the target automation directly
         $this->executeActions($targetAutomation->actions ?? [], $payload, $contact);
+    }
+
+    /**
+     * Start a campaign and dispatch an event so other automations can trigger.
+     */
+    protected function actionStartCampaign(array $params, ?Contact $contact): bool
+    {
+        if (!$contact) return false;
+
+        $campaignName = $params['campaign_name'] ?? 'Campaña Desconocida';
+
+        Log::info("AutomationEngine: Contacto {$contact->id} asignado a la campaña: {$campaignName}");
+
+        // Dispatch inner event for "campaign_started"
+        $payload = [
+            'tenant_id' => $contact->tenant_id,
+            'campaign_name' => $campaignName,
+            'contact_id' => $contact->id
+        ];
+
+        // Process this event synchronously so rules reacting to campaign_started trigger immediately
+        $this->processEvent('campaign_started', $payload, $contact);
+
+        return true;
     }
 
     /**
