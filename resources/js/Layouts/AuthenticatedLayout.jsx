@@ -20,10 +20,16 @@ import {
     ShieldAlert
 } from 'lucide-react';
 
-export default function AuthenticatedLayout({ header, children }) {
+export default function AuthenticatedLayout({ header, children, fullWidth = false }) {
     const { auth, currentTenant, flash } = usePage().props;
     const user = auth.user;
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        if (typeof window !== 'undefined') {
+            return localStorage.getItem('sidebarCollapsed') === 'true';
+        }
+        return false;
+    });
     const [isProfileOpen, setIsProfileOpen] = useState(false);
     const [flashMsg, setFlashMsg] = useState(null);
 
@@ -35,6 +41,9 @@ export default function AuthenticatedLayout({ header, children }) {
         }
     }, [flash]);
 
+    useEffect(() => {
+        localStorage.setItem('sidebarCollapsed', isSidebarCollapsed);
+    }, [isSidebarCollapsed]);
 
     // Navigation depends on role
     // Super admin: only Ticsia platform management items
@@ -58,41 +67,53 @@ export default function AuthenticatedLayout({ header, children }) {
         { name: 'Recursos', href: route('resources.index'), icon: Briefcase, current: route().current('resources.index') },
         { name: 'Campañas', href: route('campaigns.index'), icon: Megaphone, current: route().current('campaigns.index') },
         { name: 'Automatizaciones', href: route('settings.automations'), icon: Settings, current: route().current('settings.automations') },
+        { name: 'Editor Visual (Beta)', href: route('visual-flows.index'), icon: Sparkles, current: route().current('visual-flows.*') },
     ];
 
     const navigation = isSuperAdminMode ? superAdminNavigation : tenantNavigation;
 
-
     return (
         <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col md:flex-row antialiased">
-            <aside className={`hidden md:flex flex-col w-64 shrink-0 border-r ${
+            <aside className={`hidden md:flex flex-col shrink-0 border-r transition-all duration-300 ${isSidebarCollapsed ? 'w-20' : 'w-64'} ${
                 isSuperAdminMode 
                     ? 'bg-slate-950 border-slate-800' 
                     : 'bg-white border-slate-200/80 shadow-[1px_0_5px_rgba(0,0,0,0.015)]'
             }`}>
                 {/* Brand / Logo */}
-                <div className={`h-16 flex items-center gap-3 px-6 border-b ${
+                <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-between px-6'} border-b ${
                     isSuperAdminMode ? 'border-slate-800' : 'border-slate-100'
                 }`}>
-                    <div className="h-9 w-9 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-center overflow-hidden">
-                        <img src="/logoti.jpg" alt="Logo" className="h-8 w-8 object-contain" />
-                    </div>
-                    <div>
-                        <span className={`font-bold text-lg ${ isSuperAdminMode ? 'text-white' : 'text-slate-800' }`}>
-                            {isSuperAdminMode ? 'Ticsia' : 'SAC '}
-                            <span className="text-brand-teal">{isSuperAdminMode ? ' Admin' : 'Autónomo'}</span>
-                        </span>
-                        <div className={`text-[9px] font-mono tracking-widest uppercase font-semibold ${
-                            isSuperAdminMode ? 'text-slate-500' : 'text-slate-400'
-                        }`}>
-                            {isSuperAdminMode ? 'Plataforma SaaS' : 'Engine V1.0'}
+                    {!isSidebarCollapsed && (
+                        <div className="flex items-center gap-3 overflow-hidden">
+                            <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-center overflow-hidden">
+                                <img src="/logoti.jpg" alt="Logo" className="h-8 w-8 object-contain" />
+                            </div>
+                            <div className="whitespace-nowrap">
+                                <span className={`font-bold text-lg ${ isSuperAdminMode ? 'text-white' : 'text-slate-800' }`}>
+                                    {isSuperAdminMode ? 'Ticsia' : 'SAC '}
+                                    <span className="text-brand-teal">{isSuperAdminMode ? ' Admin' : 'Autónomo'}</span>
+                                </span>
+                                <div className={`text-[9px] font-mono tracking-widest uppercase font-semibold ${
+                                    isSuperAdminMode ? 'text-slate-500' : 'text-slate-400'
+                                }`}>
+                                    {isSuperAdminMode ? 'Plataforma SaaS' : 'Engine V1.0'}
+                                </div>
+                            </div>
                         </div>
-                    </div>
+                    )}
+                    
+                    <button 
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className={`p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors ${isSidebarCollapsed ? 'mx-auto' : ''}`}
+                        title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+                    >
+                        <Menu className="h-5 w-5" />
+                    </button>
                 </div>
 
                 {/* Super Admin Info Banner (when in super admin mode) */}
-                {isSuperAdminMode && (
-                    <div className="mx-4 mt-4 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20">
+                {isSuperAdminMode && !isSidebarCollapsed && (
+                    <div className="mx-4 mt-4 px-3 py-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 whitespace-nowrap overflow-hidden">
                         <div className="flex items-center gap-2">
                             <ShieldAlert className="h-4 w-4 text-amber-400 shrink-0" />
                             <div>
@@ -102,24 +123,31 @@ export default function AuthenticatedLayout({ header, children }) {
                         </div>
                     </div>
                 )}
+                
+                {isSuperAdminMode && isSidebarCollapsed && (
+                    <div className="mx-auto mt-4 p-2 rounded-xl bg-amber-500/10 border border-amber-500/20" title="Modo Administrador">
+                        <ShieldAlert className="h-4 w-4 text-amber-400" />
+                    </div>
+                )}
 
                 {/* Impersonation indicator in nav */}
-                {!isSuperAdminMode && user.role === 'super_admin' && (
-                    <div className="mx-4 mt-4 px-3 py-2 rounded-xl bg-brand-teal/10 border border-brand-teal/20">
+                {!isSuperAdminMode && user.role === 'super_admin' && !isSidebarCollapsed && (
+                    <div className="mx-4 mt-4 px-3 py-2 rounded-xl bg-brand-teal/10 border border-brand-teal/20 whitespace-nowrap overflow-hidden">
                         <div className="text-[9px] font-bold text-brand-teal uppercase tracking-wider">Viendo como:</div>
                         <div className="text-xs font-bold text-white mt-0.5 truncate">{currentTenant?.name}</div>
                     </div>
                 )}
 
                 {/* Navigation Links */}
-                <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
+                <nav className={`flex-1 ${isSidebarCollapsed ? 'px-2 py-6' : 'px-4 py-6'} space-y-1.5 overflow-y-auto overflow-x-hidden`}>
                     {navigation.map((item) => {
                         const Icon = item.icon;
                         return (
                             <Link
                                 key={item.name}
                                 href={item.href}
-                                className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 group ${
+                                title={isSidebarCollapsed ? item.name : ""}
+                                className={`flex items-center ${isSidebarCollapsed ? 'justify-center p-3' : 'gap-3 px-4 py-3'} rounded-xl text-sm font-semibold transition-all duration-200 group ${
                                     isSuperAdminMode
                                         ? item.current
                                             ? 'bg-brand-teal/15 text-brand-teal border border-brand-teal/20 shadow-sm'
@@ -129,12 +157,12 @@ export default function AuthenticatedLayout({ header, children }) {
                                             : 'text-slate-500 hover:text-slate-800 hover:bg-slate-50 border border-transparent'
                                 }`}
                             >
-                                <Icon className={`h-5 w-5 transition-transform duration-200 group-hover:scale-105 ${
+                                <Icon className={`shrink-0 h-5 w-5 transition-transform duration-200 group-hover:scale-105 ${
                                     item.current ? 'text-brand-teal' : isSuperAdminMode ? 'text-slate-500 group-hover:text-slate-300' : 'text-slate-400 group-hover:text-slate-600'
                                 }`} />
-                                <span>{item.name}</span>
-                                {item.current && (
-                                    <ChevronRight className="ml-auto h-4 w-4 text-brand-teal" />
+                                {!isSidebarCollapsed && <span className="whitespace-nowrap">{item.name}</span>}
+                                {!isSidebarCollapsed && item.current && (
+                                    <ChevronRight className="ml-auto shrink-0 h-4 w-4 text-brand-teal" />
                                 )}
                             </Link>
                         );
@@ -143,43 +171,49 @@ export default function AuthenticatedLayout({ header, children }) {
 
                 {/* User Section / Footer */}
                 <div className={`p-4 border-t ${ isSuperAdminMode ? 'border-slate-800 bg-slate-900/60' : 'border-slate-100 bg-slate-50/50' }`}>
-                    <div className="flex items-center gap-3 px-2 py-2 mb-2">
-                        <div className={`h-9 w-9 rounded-full border flex items-center justify-center font-bold uppercase ${
-                            isSuperAdminMode 
-                                ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
-                                : 'bg-slate-100 border-slate-200 text-slate-600'
-                        }`}>
-                            {user.name.charAt(0)}
-                        </div>
-                        <div className="truncate">
-                            <div className={`text-xs font-semibold truncate ${ isSuperAdminMode ? 'text-white' : 'text-slate-700' }`}>{user.name}</div>
-                            <div className={`text-[10px] truncate font-bold ${ isSuperAdminMode ? 'text-amber-400' : 'text-slate-400 capitalize' }`}>
-                                {isSuperAdminMode ? '⭐ Super Administrador' : user.role.replace('_', ' ')}
+                    {!isSidebarCollapsed && (
+                        <div className="flex items-center gap-3 px-2 py-2 mb-2 overflow-hidden">
+                            <div className={`shrink-0 h-9 w-9 rounded-full border flex items-center justify-center font-bold uppercase ${
+                                isSuperAdminMode 
+                                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-400' 
+                                    : 'bg-slate-100 border-slate-200 text-slate-600'
+                            }`}>
+                                {user.name.charAt(0)}
+                            </div>
+                            <div className="truncate">
+                                <div className={`text-xs font-semibold truncate ${ isSuperAdminMode ? 'text-white' : 'text-slate-700' }`}>{user.name}</div>
+                                <div className={`text-[10px] truncate font-bold ${ isSuperAdminMode ? 'text-amber-400' : 'text-slate-400 capitalize' }`}>
+                                    {isSuperAdminMode ? '⭐ Super Administrador' : user.role.replace('_', ' ')}
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    )}
                     
-                    <div className="flex gap-2">
+                    <div className={`flex gap-2 ${isSidebarCollapsed ? 'flex-col items-center' : ''}`}>
                         <Link
                             href={route('profile.edit')}
-                            className={`flex-1 flex justify-center items-center py-2 px-3 rounded-lg text-xs border transition-all ${
+                            className={`flex justify-center items-center rounded-lg text-xs border transition-all ${
+                                isSidebarCollapsed ? 'p-2 w-full' : 'flex-1 py-2 px-3'
+                            } ${
                                 isSuperAdminMode 
                                     ? 'bg-slate-800 hover:bg-slate-700 border-slate-700 text-slate-400 hover:text-white' 
                                     : 'bg-white hover:bg-slate-100 border-slate-200 text-slate-600 hover:text-slate-800'
                             }`}
                             title="Ver Perfil"
                         >
-                            <User className="h-3.5 w-3.5 mr-1" />
-                            Perfil
+                            <User className={`h-4 w-4 ${!isSidebarCollapsed ? 'mr-1' : ''}`} />
+                            {!isSidebarCollapsed && "Perfil"}
                         </Link>
                         <Link
                             href={route('logout')}
                             method="post"
                             as="button"
-                            className="flex justify-center items-center p-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-all"
+                            className={`flex justify-center items-center rounded-lg bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-400 transition-all ${
+                                isSidebarCollapsed ? 'p-2 w-full mt-2' : 'p-2'
+                            }`}
                             title="Cerrar Sesión"
                         >
-                            <LogOut className="h-3.5 w-3.5" />
+                            <LogOut className="h-4 w-4" />
                         </Link>
                     </div>
                 </div>
@@ -400,8 +434,8 @@ export default function AuthenticatedLayout({ header, children }) {
                 )}
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto px-6 py-8">
-                    <div className="max-w-7xl mx-auto">
+                <main className={`flex-1 overflow-y-auto ${fullWidth ? '' : 'px-6 py-8'}`}>
+                    <div className={fullWidth ? 'h-full w-full' : 'max-w-7xl mx-auto'}>
                         {children}
                     </div>
                 </main>

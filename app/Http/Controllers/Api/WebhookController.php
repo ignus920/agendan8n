@@ -5,12 +5,13 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use App\Services\AutomationEngine;
+use App\Services\VisualFlowEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
 {
-    public function handleEvent(Request $request, AutomationEngine $automationEngine)
+    public function handleEvent(Request $request, AutomationEngine $automationEngine, VisualFlowEngine $visualFlowEngine)
     {
         Log::info("WebhookController: Received payload", $request->all());
 
@@ -140,16 +141,24 @@ class WebhookController extends Controller
                 ]);
             }
 
-            // 4. Run Automation Engine
-            Log::info("WebhookController: Triggering AutomationEngine for event: {$eventType} and contact: {$contact->id}");
-            $automationEngine->processEvent($eventType, [
+            $payload = [
                 'tenant_id' => $tenantId,
                 'event_type' => $eventType,
                 'phone' => $phone,
                 'name' => $name,
                 'message' => $message,
                 'direction' => $direction,
-            ], $contact);
+            ];
+
+            // 4. Run Visual Flow Engine first
+            Log::info("WebhookController: Triggering VisualFlowEngine for event: {$eventType} and contact: {$contact->id}");
+            $visualFlowHandled = $visualFlowEngine->processEvent($eventType, $payload, $contact);
+
+            // 5. Run traditional Automation Engine if visual flow didn't handle it
+            if (!$visualFlowHandled) {
+                Log::info("WebhookController: Triggering AutomationEngine for event: {$eventType} and contact: {$contact->id}");
+                $automationEngine->processEvent($eventType, $payload, $contact);
+            }
 
             return response()->json([
                 'status' => 'success',

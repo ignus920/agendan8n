@@ -42,6 +42,13 @@ Route::middleware(['auth', 'verified', 'tenant'])->group(function () {
     Route::resource('resources', ResourceController::class)->except(['create', 'show', 'edit']);
     Route::resource('campaigns', CampaignController::class)->except(['create', 'show', 'edit']);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send'])->name('campaigns.send');
+
+    // Visual Flows Editor (React Flow)
+    Route::get('/settings/visual-flows', [\App\Http\Controllers\VisualFlowController::class, 'index'])->name('visual-flows.index');
+    Route::post('/settings/visual-flows', [\App\Http\Controllers\VisualFlowController::class, 'store'])->name('visual-flows.store');
+    Route::get('/settings/visual-flows/{id}', [\App\Http\Controllers\VisualFlowController::class, 'edit'])->name('visual-flows.edit');
+    Route::put('/settings/visual-flows/{id}', [\App\Http\Controllers\VisualFlowController::class, 'update'])->name('visual-flows.update');
+    Route::delete('/settings/visual-flows/{id}', [\App\Http\Controllers\VisualFlowController::class, 'destroy'])->name('visual-flows.destroy');
 });
 
 // Super Admin Routes (no tenant middleware - super_admin operates across tenants)
