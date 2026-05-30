@@ -57,6 +57,7 @@ class VisualFlowController extends Controller
 
         $validated = $request->validate([
             'name' => 'nullable|string|max:255',
+            'description' => 'nullable|string',
             'flow_data' => 'nullable|array',
             'is_active' => 'nullable|boolean',
         ]);

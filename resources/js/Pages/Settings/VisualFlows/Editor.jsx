@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, Save, Play, MessageSquare, Maximize, Menu, ChevronLeft } from 'lucide-react';
+import { ArrowLeft, Save, Play, MessageSquare, Maximize, Menu, ChevronLeft, Zap, Target } from 'lucide-react';
 import {
     ReactFlow,
     Background,
@@ -16,10 +16,14 @@ import '@xyflow/react/dist/style.css';
 
 import TriggerNode from './Nodes/TriggerNode';
 import TextMessageNode from './Nodes/TextMessageNode';
+import SystemEventNode from './Nodes/SystemEventNode';
+import LeadScoringNode from './Nodes/LeadScoringNode';
 
 const nodeTypes = {
     trigger: TriggerNode,
     textMessage: TextMessageNode,
+    systemEvent: SystemEventNode,
+    leadScoring: LeadScoringNode,
 };
 
 let idCounter = 0;
@@ -140,13 +144,14 @@ export default function Editor({ auth, flow }) {
                 
                 <div className="p-4 flex-grow overflow-y-auto space-y-6">
                     {/* Basic Messages */}
-                    <div>
+                    <div className="mb-6">
                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Mensajes Básicos</h4>
                         <div className="space-y-3">
                             <div 
                                 className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-purple-300 transition flex items-center group relative overflow-hidden"
                                 onDragStart={(e) => onDragStart(e, 'trigger', 'Disparador Inicial')}
                                 draggable
+                                title="Define el punto de inicio del flujo (ej. palabra clave recibida por WhatsApp)"
                             >
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-500 opacity-80 group-hover:opacity-100"></div>
                                 <div className="bg-purple-50 text-purple-600 p-1.5 rounded mr-3 border border-purple-100">
@@ -159,12 +164,45 @@ export default function Editor({ auth, flow }) {
                                 className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-blue-300 transition flex items-center group relative overflow-hidden"
                                 onDragStart={(e) => onDragStart(e, 'textMessage', 'Mensaje de Texto')}
                                 draggable
+                                title="Envía un mensaje de texto simple al contacto"
                             >
                                 <div className="absolute left-0 top-0 bottom-0 w-1 bg-blue-500 opacity-80 group-hover:opacity-100"></div>
                                 <div className="bg-blue-50 text-blue-600 p-1.5 rounded mr-3 border border-blue-100">
                                     <MessageSquare className="w-4 h-4" />
                                 </div>
                                 <span className="font-medium">Mensaje de Texto</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* CRM y Eventos */}
+                    <div className="mb-6">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">CRM y Lead Scoring</h4>
+                        <div className="space-y-3">
+                            <div 
+                                className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-amber-300 transition flex items-center group relative overflow-hidden"
+                                onDragStart={(e) => onDragStart(e, 'systemEvent', 'Evento de Sistema')}
+                                draggable
+                                title="Inicia el flujo automáticamente basado en eventos (ej. Cita agendada, Lead inactivo)"
+                            >
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-amber-500 opacity-80 group-hover:opacity-100"></div>
+                                <div className="bg-amber-50 text-amber-600 p-1.5 rounded mr-3 border border-amber-100">
+                                    <Zap className="w-4 h-4" />
+                                </div>
+                                <span className="font-medium">Evento de Sistema</span>
+                            </div>
+
+                            <div 
+                                className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-emerald-300 transition flex items-center group relative overflow-hidden"
+                                onDragStart={(e) => onDragStart(e, 'leadScoring', 'Actualizar Lead Score')}
+                                draggable
+                                title="Suma o resta puntos al perfil del contacto para evaluar su interés"
+                            >
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 opacity-80 group-hover:opacity-100"></div>
+                                <div className="bg-emerald-50 text-emerald-600 p-1.5 rounded mr-3 border border-emerald-100">
+                                    <Target className="w-4 h-4" />
+                                </div>
+                                <span className="font-medium">Actualizar Lead Score</span>
                             </div>
                         </div>
                     </div>
@@ -213,9 +251,6 @@ export default function Editor({ auth, flow }) {
                         </div>
                         
                         <div className="flex items-center gap-4 pointer-events-auto">
-                            <span className="hidden md:inline font-semibold text-slate-700 bg-white/90 px-4 py-2 rounded-lg backdrop-blur-sm shadow-sm border border-slate-200">
-                                {flow.name}
-                            </span>
                             <button
                                 onClick={onSave}
                                 disabled={isSaving}

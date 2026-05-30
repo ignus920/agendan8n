@@ -66,8 +66,7 @@ export default function AuthenticatedLayout({ header, children, fullWidth = fals
         { name: 'Productos', href: route('products.index'), icon: Package, current: route().current('products.index') },
         { name: 'Recursos', href: route('resources.index'), icon: Briefcase, current: route().current('resources.index') },
         { name: 'Campañas', href: route('campaigns.index'), icon: Megaphone, current: route().current('campaigns.index') },
-        { name: 'Automatizaciones', href: route('settings.automations'), icon: Settings, current: route().current('settings.automations') },
-        { name: 'Editor Visual (Beta)', href: route('visual-flows.index'), icon: Sparkles, current: route().current('visual-flows.*') },
+        { name: 'Automatizaciones Visuales', href: route('visual-flows.index'), icon: Sparkles, current: route().current('visual-flows.*') },
     ];
 
     const navigation = isSuperAdminMode ? superAdminNavigation : tenantNavigation;
@@ -80,14 +79,14 @@ export default function AuthenticatedLayout({ header, children, fullWidth = fals
                     : 'bg-white border-slate-200/80 shadow-[1px_0_5px_rgba(0,0,0,0.015)]'
             }`}>
                 {/* Brand / Logo */}
-                <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'justify-between px-6'} border-b ${
+                <div className={`h-16 flex items-center ${isSidebarCollapsed ? 'justify-center px-0' : 'px-6'} border-b ${
                     isSuperAdminMode ? 'border-slate-800' : 'border-slate-100'
                 }`}>
-                    {!isSidebarCollapsed && (
-                        <div className="flex items-center gap-3 overflow-hidden">
-                            <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-center overflow-hidden">
-                                <img src="/logoti.jpg" alt="Logo" className="h-8 w-8 object-contain" />
-                            </div>
+                    <div className="flex items-center gap-3 overflow-hidden">
+                        <div className="h-9 w-9 shrink-0 rounded-xl bg-slate-50 border border-slate-150 flex items-center justify-center overflow-hidden">
+                            <img src="/logoti.jpg" alt="Logo" className="h-8 w-8 object-contain" />
+                        </div>
+                        {!isSidebarCollapsed && (
                             <div className="whitespace-nowrap">
                                 <span className={`font-bold text-lg ${ isSuperAdminMode ? 'text-white' : 'text-slate-800' }`}>
                                     {isSuperAdminMode ? 'Ticsia' : 'SAC '}
@@ -99,16 +98,8 @@ export default function AuthenticatedLayout({ header, children, fullWidth = fals
                                     {isSuperAdminMode ? 'Plataforma SaaS' : 'Engine V1.0'}
                                 </div>
                             </div>
-                        </div>
-                    )}
-                    
-                    <button 
-                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-                        className={`p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors ${isSidebarCollapsed ? 'mx-auto' : ''}`}
-                        title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
-                    >
-                        <Menu className="h-5 w-5" />
-                    </button>
+                        )}
+                    </div>
                 </div>
 
                 {/* Super Admin Info Banner (when in super admin mode) */}
@@ -349,6 +340,14 @@ export default function AuthenticatedLayout({ header, children, fullWidth = fals
                 {/* Topbar */}
                 <header className="h-16 border-b border-slate-200/85 bg-white/80 backdrop-blur-md flex items-center justify-between px-6 shrink-0 z-30">
                     <div className="flex items-center gap-2.5">
+                        <button 
+                            onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 transition-colors hidden md:flex items-center justify-center mr-1"
+                            title={isSidebarCollapsed ? "Expandir menú" : "Colapsar menú"}
+                        >
+                            <Menu className="h-5 w-5" />
+                        </button>
+
                         {isSuperAdminMode && (
                             /* Super Admin topbar indicators */
                             <div className="flex items-center gap-1.5 bg-amber-50 border border-amber-200/80 px-3 py-1 rounded-full text-[11px] text-amber-700 font-semibold">
@@ -359,14 +358,6 @@ export default function AuthenticatedLayout({ header, children, fullWidth = fals
                     </div>
 
                     <div className="flex items-center gap-4">
-                        {!isSuperAdminMode && (
-                            <span className="text-xs text-slate-500 font-mono hidden md:inline">
-                                Tenant: <span className="text-brand-teal font-bold">{currentTenant?.name || '—'}</span>
-                            </span>
-                        )}
-                        
-                        <div className="h-4 w-px bg-slate-200 hidden md:block"></div>
-
                         {/* Topbar User Menu */}
                         <div className="relative">
                             <button

@@ -1,17 +1,25 @@
 import React, { useState } from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link, useForm } from '@inertiajs/react';
-import { Plus, Settings, Trash2, Edit } from 'lucide-react';
+import { Head, Link, useForm, router } from '@inertiajs/react';
+import { Plus, Settings, Edit, Pencil } from 'lucide-react';
 import Modal from '@/Components/Modal';
 
 export default function Index({ auth, flows }) {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+    const [editingFlow, setEditingFlow] = useState(null);
+
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
         description: '',
     });
 
-    const submit = (e) => {
+    const editForm = useForm({
+        name: '',
+        description: '',
+    });
+
+    const submitCreate = (e) => {
         e.preventDefault();
         post(route('visual-flows.store'), {
             onSuccess: () => {
@@ -21,10 +29,36 @@ export default function Index({ auth, flows }) {
         });
     };
 
+    const submitEdit = (e) => {
+        e.preventDefault();
+        editForm.put(route('visual-flows.update', editingFlow.id), {
+            onSuccess: () => {
+                setIsEditModalOpen(false);
+                setEditingFlow(null);
+                editForm.reset();
+            },
+        });
+    };
+
+    const openEditModal = (flow) => {
+        setEditingFlow(flow);
+        editForm.setData({
+            name: flow.name,
+            description: flow.description || '',
+        });
+        setIsEditModalOpen(true);
+    };
+
+    const toggleFlowStatus = (flow) => {
+        router.put(route('visual-flows.update', flow.id), {
+            is_active: !flow.is_active
+        }, { preserveScroll: true });
+    };
+
     return (
         <AuthenticatedLayout
             user={auth.user}
-            header={<h2 className="font-semibold text-xl text-slate-800 leading-tight">Editor Visual de Flujos (BETA)</h2>}
+            header={<h2 className="font-semibold text-xl text-slate-800 leading-tight">Automatizaciones Visuales</h2>}
         >
             <Head title="Flujos Visuales" />
 
@@ -60,10 +94,15 @@ export default function Index({ auth, flows }) {
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                                     {flows.map((flow) => (
-                                        <div key={flow.id} className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-slate-50 flex flex-col">
+                                        <div key={flow.id} className={`border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col ${flow.is_active ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-80'}`}>
                                             <div className="flex justify-between items-start mb-4">
-                                                <h4 className="text-lg font-semibold text-slate-800 line-clamp-1">{flow.name}</h4>
-                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${flow.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-100 text-slate-800'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    <h4 className="text-lg font-semibold text-slate-800 line-clamp-1">{flow.name}</h4>
+                                                    <button onClick={() => openEditModal(flow)} className="text-slate-400 hover:text-indigo-600 transition-colors" title="Editar Información">
+                                                        <Pencil className="w-4 h-4" />
+                                                    </button>
+                                                </div>
+                                                <span className={`px-2 py-1 rounded-full text-xs font-medium ${flow.is_active ? 'bg-green-100 text-green-800' : 'bg-slate-200 text-slate-600'}`}>
                                                     {flow.is_active ? 'Activo' : 'Inactivo'}
                                                 </span>
                                             </div>
@@ -78,14 +117,19 @@ export default function Index({ auth, flows }) {
                                                     <Edit className="w-4 h-4 mr-1" />
                                                     Abrir Editor
                                                 </Link>
-                                                <Link
-                                                    href={route('visual-flows.destroy', flow.id)}
-                                                    method="delete"
-                                                    as="button"
-                                                    className="text-red-500 hover:text-red-700"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </Link>
+                                                
+                                                <div className="flex items-center gap-2" title={flow.is_active ? 'Desactivar Flujo' : 'Activar Flujo'}>
+                                                    <span className="text-xs text-slate-500 font-medium select-none">Estado</span>
+                                                    <label className="relative inline-flex items-center cursor-pointer">
+                                                        <input 
+                                                            type="checkbox" 
+                                                            className="sr-only peer" 
+                                                            checked={!!flow.is_active} 
+                                                            onChange={() => toggleFlowStatus(flow)} 
+                                                        />
+                                                        <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                                    </label>
+                                                </div>
                                             </div>
                                         </div>
                                     ))}
@@ -97,7 +141,7 @@ export default function Index({ auth, flows }) {
             </div>
 
             <Modal show={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)}>
-                <form onSubmit={submit} className="p-6 bg-white">
+                <form onSubmit={submitCreate} className="p-6 bg-white">
                     <h2 className="text-lg font-medium text-slate-900">
                         Crear Nuevo Flujo Visual
                     </h2>
@@ -144,6 +188,58 @@ export default function Index({ auth, flows }) {
                             className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                         >
                             Crear e ir al Editor
+                        </button>
+                    </div>
+                </form>
+            </Modal>
+
+            <Modal show={isEditModalOpen} onClose={() => setIsEditModalOpen(false)}>
+                <form onSubmit={submitEdit} className="p-6 bg-white">
+                    <h2 className="text-lg font-medium text-slate-900">
+                        Editar Flujo Visual
+                    </h2>
+                    <p className="mt-1 text-sm text-slate-600">
+                        Modifica la información básica del flujo.
+                    </p>
+
+                    <div className="mt-6">
+                        <label htmlFor="edit_name" className="block text-sm font-medium text-slate-700">Nombre</label>
+                        <input
+                            type="text"
+                            id="edit_name"
+                            value={editForm.data.name}
+                            onChange={(e) => editForm.setData('name', e.target.value)}
+                            className="mt-1 block w-full border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                            required
+                        />
+                        {editForm.errors.name && <div className="text-red-500 text-sm mt-1">{editForm.errors.name}</div>}
+                    </div>
+
+                    <div className="mt-4">
+                        <label htmlFor="edit_description" className="block text-sm font-medium text-slate-700">Descripción (Opcional)</label>
+                        <textarea
+                            id="edit_description"
+                            value={editForm.data.description}
+                            onChange={(e) => editForm.setData('description', e.target.value)}
+                            className="mt-1 block w-full border-slate-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                            rows="3"
+                        />
+                    </div>
+
+                    <div className="mt-6 flex justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setIsEditModalOpen(false)}
+                            className="mr-3 px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 bg-white hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Cancelar
+                        </button>
+                        <button
+                            type="submit"
+                            disabled={editForm.processing}
+                            className="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                        >
+                            Guardar Cambios
                         </button>
                     </div>
                 </form>
