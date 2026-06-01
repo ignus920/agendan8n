@@ -12,7 +12,7 @@ export default function LeadScoringNode({ id, data, selected }) {
 
     const [actionType, setActionType] = useState(initialOutput.action || "add");
     const [points, setPoints] = useState(initialOutput.points || 10);
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
     const [errors, setErrors] = useState({ points: false });
 
     const validate = (pts) => {
@@ -29,13 +29,14 @@ export default function LeadScoringNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             output: [{
                 action: actionType,
                 points: parseInt(points, 10),
                 type_text: `${actionType === 'add' ? 'Sumar' : 'Restar'} ${points} pts`
             }]
         });
-    }, [actionType, points]);
+    }, [actionType, points, isExpanded]);
 
     const handleDuplicate = () => {
         const nodes = getNodes();

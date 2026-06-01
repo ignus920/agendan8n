@@ -17,7 +17,7 @@ export default function TriggerNode({ id, data, selected }) {
     const [replyType, setReplyType] = useState(initialOutput.reply_type ? parseInt(initialOutput.reply_type) : "");
     const [keywords, setKeywords] = useState(initialOutput.trigger ? initialOutput.trigger.split(',').filter(Boolean) : []);
     const [newKeyword, setNewKeyword] = useState("");
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
     const [errors, setErrors] = useState({ relationType: false, replyType: false, keywords: false });
 
     const relationTypes = [
@@ -60,6 +60,7 @@ export default function TriggerNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             output: [{
                 reply_type_text: typeMap[replyType] || "Cuando el mensaje contiene",
                 reply_type: replyType.toString(),
@@ -67,7 +68,7 @@ export default function TriggerNode({ id, data, selected }) {
                 trigger: keywords.join(',')
             }]
         });
-    }, [relationType, replyType, keywords]);
+    }, [relationType, replyType, keywords, isExpanded]);
 
     const handleAddKeyword = () => {
         if (newKeyword.trim() && !keywords.includes(newKeyword.trim())) {

@@ -9,7 +9,7 @@ export default function TextMessageNode({ id, data, selected }) {
     const initialOutput = data.output?.[0] || { reply_text: "" };
     
     const [message, setMessage] = useState(initialOutput.reply_text || "");
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
     const [showCharacterWarning, setShowCharacterWarning] = useState(false);
 
     const characterCount = message.length;
@@ -21,6 +21,7 @@ export default function TextMessageNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             errorMessage: !isMessageValid 
                 ? "El texto del mensaje es obligatorio" 
                 : !isWithinCharLimit 
@@ -36,7 +37,7 @@ export default function TextMessageNode({ id, data, selected }) {
         } else {
             setShowCharacterWarning(false);
         }
-    }, [message]);
+    }, [message, isExpanded]);
 
     const handleDuplicate = () => {
         const nodes = getNodes();

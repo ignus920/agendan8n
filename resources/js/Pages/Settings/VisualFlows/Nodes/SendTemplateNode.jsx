@@ -12,7 +12,7 @@ export default function SendTemplateNode({ id, data, selected }) {
     
     const [templateName, setTemplateName] = useState(initialOutput.template_name || "");
     const [templateParams, setTemplateParams] = useState(initialOutput.template_params || []);
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
 
     const selectedTemplate = whatsmarkTemplates.find(t => t.template_name === templateName);
     
@@ -43,6 +43,7 @@ export default function SendTemplateNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             errorMessage: templateName === "" 
                 ? "Debe seleccionar una plantilla" 
                 : !isValid 
@@ -50,7 +51,7 @@ export default function SendTemplateNode({ id, data, selected }) {
                 : "",
             output: [{ template_name: templateName, template_params: templateParams }]
         });
-    }, [templateName, templateParams, isValid]);
+    }, [templateName, templateParams, isValid, isExpanded]);
 
     const handleParamChange = (index, value) => {
         const newParams = [...templateParams];

@@ -10,7 +10,7 @@ export default function SystemEventNode({ id, data, selected }) {
     };
 
     const [eventType, setEventType] = useState(initialOutput.event_type || "");
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
     const [errors, setErrors] = useState({ eventType: false });
 
     const eventTypes = [
@@ -34,12 +34,13 @@ export default function SystemEventNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             output: [{
                 event_type: eventType,
                 type_text: eventTypes.find(e => e.id === eventType)?.label || "Evento de Sistema"
             }]
         });
-    }, [eventType]);
+    }, [eventType, isExpanded]);
 
     const handleDuplicate = () => {
         const nodes = getNodes();

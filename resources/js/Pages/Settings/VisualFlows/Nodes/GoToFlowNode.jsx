@@ -11,7 +11,7 @@ export default function GoToFlowNode({ id, data, selected }) {
     const initialOutput = data.output?.[0] || { target_flow_id: "" };
     
     const [targetFlowId, setTargetFlowId] = useState(initialOutput.target_flow_id || "");
-    const [isExpanded, setIsExpanded] = useState(true);
+    const [isExpanded, setIsExpanded] = useState(data.isExpanded !== false);
 
     const isValid = targetFlowId !== "";
 
@@ -19,10 +19,11 @@ export default function GoToFlowNode({ id, data, selected }) {
         updateNodeData(id, {
             ...data,
             isValid,
+            isExpanded,
             errorMessage: !isValid ? "Debe seleccionar un flujo destino" : "",
             output: [{ target_flow_id: targetFlowId }]
         });
-    }, [targetFlowId]);
+    }, [targetFlowId, isExpanded]);
 
     const handleDuplicate = () => {
         const nodes = getNodes();
