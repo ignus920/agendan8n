@@ -50,6 +50,12 @@ class AutomationEngine
             return;
         }
 
+        // Trigger follow-up campaign association for transactional events
+        // Exclude model-level and campaign-level events to avoid duplicate or recursive logs
+        if ($contact && !in_array($eventType, ['campaign_started', 'campaign_assigned', 'contact_created', 'funnel_stage_changed'])) {
+            app(\App\Services\CampaignFollowupService::class)->associateCampaign($contact, $eventType, $payload);
+        }
+
         $automations = Automation::withoutGlobalScope('tenant')
             ->where('tenant_id', $tenantId)
             ->forEvent($eventType)

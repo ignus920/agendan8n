@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
+import { FlowEditorContext } from './FlowEditorContext';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { ArrowLeft, Save, Play, MessageSquare, Maximize, Menu, ChevronLeft, Zap, Target } from 'lucide-react';
@@ -18,18 +19,24 @@ import TriggerNode from './Nodes/TriggerNode';
 import TextMessageNode from './Nodes/TextMessageNode';
 import SystemEventNode from './Nodes/SystemEventNode';
 import LeadScoringNode from './Nodes/LeadScoringNode';
+import GoToFlowNode from './Nodes/GoToFlowNode';
+import SendTemplateNode from './Nodes/SendTemplateNode';
+
+
 
 const nodeTypes = {
     trigger: TriggerNode,
     textMessage: TextMessageNode,
     systemEvent: SystemEventNode,
     leadScoring: LeadScoringNode,
+    goToFlow: GoToFlowNode,
+    sendTemplate: SendTemplateNode,
 };
 
 let idCounter = 0;
 const getId = () => `node_${Date.now()}_${idCounter++}`;
 
-export default function Editor({ auth, flow }) {
+export default function Editor({ auth, flow, otherFlows = [], whatsmarkTemplates = [] }) {
     const reactFlowWrapper = useRef(null);
     
     // Parse flow_data or set defaults
@@ -207,6 +214,38 @@ export default function Editor({ auth, flow }) {
                         </div>
                     </div>
                     
+                    {/* Flujos y Plantillas */}
+                    <div className="mb-6">
+                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Flujos y Plantillas</h4>
+                        <div className="space-y-3">
+                            <div 
+                                className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-indigo-300 transition flex items-center group relative overflow-hidden"
+                                onDragStart={(e) => onDragStart(e, 'goToFlow', 'Redirigir a Flujo')}
+                                draggable
+                                title="Redirige la conversación a otro flujo visual activo"
+                            >
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-500 opacity-80 group-hover:opacity-100"></div>
+                                <div className="bg-indigo-50 text-indigo-600 p-1.5 rounded mr-3 border border-indigo-100">
+                                    <ArrowLeft className="w-4 h-4 rotate-180" />
+                                </div>
+                                <span className="font-medium">Redirigir a Flujo</span>
+                            </div>
+
+                            <div 
+                                className="bg-white border border-slate-200 shadow-sm text-slate-700 text-sm py-3 px-4 rounded-lg cursor-grab hover:shadow-md hover:border-teal-300 transition flex items-center group relative overflow-hidden"
+                                onDragStart={(e) => onDragStart(e, 'sendTemplate', 'Enviar Plantilla')}
+                                draggable
+                                title="Envía una plantilla oficial de WhatsApp/WhatsMark"
+                            >
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500 opacity-80 group-hover:opacity-100"></div>
+                                <div className="bg-teal-50 text-teal-600 p-1.5 rounded mr-3 border border-teal-100">
+                                    <MessageSquare className="w-4 h-4 text-teal-600" />
+                                </div>
+                                <span className="font-medium">Enviar Plantilla</span>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Placeholders for future nodes */}
                     <div className="opacity-50">
                         <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-3">Contenido Interactivo</h4>
@@ -262,27 +301,29 @@ export default function Editor({ auth, flow }) {
                         </div>
                     </div>
 
-                    <ReactFlowProvider>
-                        <ReactFlow
-                            nodes={nodes}
-                            edges={edges}
-                            onNodesChange={onNodesChange}
-                            onEdgesChange={onEdgesChange}
-                            onConnect={onConnect}
-                            onInit={setReactFlowInstance}
-                            onDrop={onDrop}
-                            onDragOver={onDragOver}
-                            nodeTypes={nodeTypes}
-                            fitView
-                        >
-                            <Background color="#e2e8f0" gap={16} size={1} />
-                            <Controls className="!bottom-4 !left-4 !right-auto bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden" />
-                            <MiniMap 
-                                nodeStrokeWidth={3} 
-                                className="!bottom-4 !right-4 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden hidden sm:block" 
-                            />
-                        </ReactFlow>
-                    </ReactFlowProvider>
+                    <FlowEditorContext.Provider value={{ otherFlows, whatsmarkTemplates }}>
+                        <ReactFlowProvider>
+                            <ReactFlow
+                                nodes={nodes}
+                                edges={edges}
+                                onNodesChange={onNodesChange}
+                                onEdgesChange={onEdgesChange}
+                                onConnect={onConnect}
+                                onInit={setReactFlowInstance}
+                                onDrop={onDrop}
+                                onDragOver={onDragOver}
+                                nodeTypes={nodeTypes}
+                                fitView
+                            >
+                                <Background color="#e2e8f0" gap={16} size={1} />
+                                <Controls className="!bottom-4 !left-4 !right-auto bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden" />
+                                <MiniMap 
+                                    nodeStrokeWidth={3} 
+                                    className="!bottom-4 !right-4 bg-white shadow-sm border border-slate-200 rounded-lg overflow-hidden hidden sm:block" 
+                                />
+                            </ReactFlow>
+                        </ReactFlowProvider>
+                    </FlowEditorContext.Provider>
                 </div>
             </div>
         </AuthenticatedLayout>

@@ -10,7 +10,7 @@ class ContactController extends Controller
 {
     public function index(Request $request)
     {
-        $contacts = Contact::with(['assignedUser', 'lastProduct'])
+        $contacts = Contact::with(['assignedUser', 'lastProduct', 'automationLogs'])
             ->orderByDesc('lead_score')
             ->get();
 

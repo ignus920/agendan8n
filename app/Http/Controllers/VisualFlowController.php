@@ -42,11 +42,32 @@ class VisualFlowController extends Controller
 
     public function edit(Request $request, $id)
     {
-        $flow = VisualFlow::where('tenant_id', $request->user()->tenant_id)
-            ->findOrFail($id);
+        $tenantId = $request->user()->tenant_id;
+        $flow = VisualFlow::where('tenant_id', $tenantId)->findOrFail($id);
+
+        $otherFlows = VisualFlow::where('tenant_id', $tenantId)
+            ->where('id', '!=', $id)
+            ->where('is_active', true)
+            ->get(['id', 'name']);
+
+        $whatsmarkTemplates = [];
+        try {
+            $tenant = $request->user()->tenant;
+            if ($tenant && $tenant->whatsmark_api_key && $tenant->whatsmark_instance_id) {
+                $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
+                    $tenant->whatsmark_api_key,
+                    $tenant->whatsmark_instance_id
+                );
+                $whatsmarkTemplates = $whatsmark->getTemplates();
+            }
+        } catch (\Throwable $th) {
+            \Illuminate\Support\Facades\Log::warning("Error fetching WhatsMark templates for flow edit: " . $th->getMessage());
+        }
 
         return Inertia::render('Settings/VisualFlows/Editor', [
-            'flow' => $flow
+            'flow' => $flow,
+            'otherFlows' => $otherFlows,
+            'whatsmarkTemplates' => $whatsmarkTemplates,
         ]);
     }
 

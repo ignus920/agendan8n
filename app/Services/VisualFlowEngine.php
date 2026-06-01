@@ -164,6 +164,79 @@ class VisualFlowEngine
                     Log::info("VisualFlowEngine: Sending textMessage node {$nodeId} to {$contact->whatsapp_phone}");
                     $whatsmark->sendMessage($contact->whatsapp_phone, $text);
                 }
+            } elseif ($type === 'goToFlow') {
+                $targetFlowId = $node['data']['output'][0]['target_flow_id'] ?? null;
+                if ($targetFlowId) {
+                    $targetFlow = VisualFlow::where('tenant_id', $tenant->id)
+                        ->where('id', $targetFlowId)
+                        ->where('is_active', true)
+                        ->first();
+                    if ($targetFlow) {
+                        Log::info("VisualFlowEngine: Redirecting from flow to target flow: {$targetFlow->name}");
+                        $flowData = $targetFlow->flow_data;
+                        if (is_array($flowData) && isset($flowData['nodes']) && isset($flowData['edges'])) {
+                            $targetNodes = $flowData['nodes'];
+                            $targetEdges = $flowData['edges'];
+                            
+                            $triggerNodeIds = [];
+                            foreach ($targetNodes as $tn) {
+                                if (($tn['type'] ?? '') === 'trigger') {
+                                    $triggerNodeIds[] = $tn['id'];
+                                }
+                            }
+                            
+                            $startNodeIds = [];
+                            foreach ($targetEdges as $te) {
+                                if (in_array($te['source'], $triggerNodeIds)) {
+                                    $startNodeIds[] = $te['target'];
+                                }
+                            }
+                            
+                            if (!empty($startNodeIds)) {
+                                foreach ($startNodeIds as $snId) {
+                                    $this->executeGraph($snId, $targetNodes, $targetEdges, $contact);
+                                }
+                            }
+                        }
+                    }
+                }
+            } elseif ($type === 'sendTemplate') {
+                $templateName = $node['data']['output'][0]['template_name'] ?? null;
+                $templateParams = $node['data']['output'][0]['template_params'] ?? [];
+                
+                if ($templateName) {
+                    $resolvedParams = [];
+                    foreach ($templateParams as $paramValue) {
+                        $resolvedParams[] = $this->parsePlaceholders($paramValue, $contact);
+                    }
+                    
+                    Log::info("VisualFlowEngine: Sending template {$templateName} to {$contact->whatsapp_phone}");
+                    $whatsmark->sendTemplate($contact->whatsapp_phone, $templateName, $resolvedParams);
+                }
+            } elseif ($type === 'leadScoring') {
+                $action = $node['data']['output'][0]['action'] ?? 'add';
+                $points = (int) ($node['data']['output'][0]['points'] ?? 10);
+                
+                $previousScore = $contact->lead_score;
+                $delta = ($action === 'add') ? $points : -$points;
+                
+                $newScore = max(0, min(100, $previousScore + $delta));
+                $contact->update(['lead_score' => $newScore]);
+                
+                // Update interest level
+                $level = match (true) {
+                    $newScore >= 80 => 'hot',
+                    $newScore >= 60 => 'high',
+                    $newScore >= 40 => 'medium',
+                    $newScore >= 20 => 'low',
+                    default => 'unknown',
+                };
+                if ($contact->interest_level !== $level) {
+                    $contact->update(['interest_level' => $level]);
+                }
+                
+                Log::info("VisualFlowEngine: Updated lead score for contact {$contact->id} from {$previousScore} to {$newScore} ({$action} {$points} pts)");
+                event(new \App\Events\ContactScoreChanged($contact, $previousScore, $newScore));
             }
             // For now, only textMessage is fully supported.
             // You can add more types like 'buttonMessage', 'delay', etc. here.

@@ -146,4 +146,61 @@ class WhatsMarkService
             return [];
         }
     }
+
+    /**
+     * Sync contact information to WhatsMark.
+     */
+    public function syncContact(string $phone, array $data): bool
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark syncContact failed: No instance_id provided.");
+                return false;
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/contacts';
+
+            // Clean phone to numeric only
+            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+            // Prepare payload supporting standard structure and custom variables
+            $payload = [
+                'phone_number' => $phone,
+                'phone' => $phone,
+                'clean_phone' => $cleanPhone,
+                'name' => $data['name'] ?? null,
+                'email' => $data['email'] ?? null,
+                'tags' => $data['tags'] ?? [],
+                'custom_variables' => $data['custom_variables'] ?? [],
+                'variables' => $data['custom_variables'] ?? [],
+            ];
+
+            // Filter out null values to keep it clean
+            $payload = array_filter($payload, function ($value) {
+                return !is_null($value);
+            });
+
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            Log::info("WhatsMark syncContact sending request to {$endpoint} for phone {$phone}");
+            $response = $request->post($endpoint, $payload);
+
+            if ($response->successful()) {
+                Log::info("WhatsMark syncContact success for phone: {$phone}");
+                return true;
+            }
+
+            Log::error("WhatsMark syncContact failed. Status: {$response->status()}, Response: {$response->body()}");
+            return false;
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark syncContact exception: {$e->getMessage()}", [
+                'phone' => $phone,
+                'data' => $data
+            ]);
+            return false;
+        }
+    }
 }

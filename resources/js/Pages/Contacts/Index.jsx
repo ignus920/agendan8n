@@ -18,6 +18,7 @@ import {
     Briefcase,
     TrendingUp,
     Edit3,
+    Megaphone,
     X
 } from 'lucide-react';
 
@@ -26,6 +27,75 @@ export default function ContactsIndex({ contacts }) {
     const [selectedTab, setSelectedTab] = useState('all'); // all, hot, customers, lost
     const [selectedContact, setSelectedContact] = useState(null);
     const [isEditing, setIsEditing] = useState(false);
+    const [activeDetailTab, setActiveDetailTab] = useState('profile'); // profile, logs
+
+    const getEventDetails = (log) => {
+        switch (log.event_type) {
+            case 'contact_created':
+                return {
+                    title: 'Contacto Creado',
+                    icon: UserCheck,
+                    color: 'border-emerald-200 text-emerald-600 bg-emerald-50'
+                };
+            case 'funnel_stage_changed':
+                return {
+                    title: 'Etapa del Embudo',
+                    icon: Briefcase,
+                    color: 'border-blue-200 text-blue-600 bg-blue-50'
+                };
+            case 'lead_score_changed':
+                return {
+                    title: 'Scoring de Lead',
+                    icon: TrendingUp,
+                    color: 'border-amber-200 text-amber-600 bg-amber-50'
+                };
+            case 'interest_level_changed':
+                return {
+                    title: 'Nivel de Interés',
+                    icon: Flame,
+                    color: 'border-red-200 text-red-600 bg-red-50'
+                };
+            case 'campaign_assigned':
+                return {
+                    title: 'Seguimiento Iniciado',
+                    icon: Megaphone,
+                    color: 'border-purple-250 text-purple-600 bg-purple-50'
+                };
+            default:
+                return {
+                    title: log.event_type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+                    icon: Bot,
+                    color: 'border-slate-200 text-slate-505 bg-slate-50'
+                };
+        }
+    };
+
+    const groupLogsByDate = (logs) => {
+        if (!logs || logs.length === 0) return {};
+        const groups = {};
+        logs.forEach(log => {
+            if (!log.executed_at) return;
+            const date = new Date(log.executed_at);
+            const today = new Date();
+            const yesterday = new Date();
+            yesterday.setDate(today.getDate() - 1);
+            
+            let dateStr = '';
+            if (date.toDateString() === today.toDateString()) {
+                dateStr = 'Hoy';
+            } else if (date.toDateString() === yesterday.toDateString()) {
+                dateStr = 'Ayer';
+            } else {
+                dateStr = date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+            }
+            
+            if (!groups[dateStr]) {
+                groups[dateStr] = [];
+            }
+            groups[dateStr].push(log);
+        });
+        return groups;
+    };
 
     const { data, setData, put, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
@@ -274,7 +344,10 @@ export default function ContactsIndex({ contacts }) {
                                                     </td>
                                                     <td className="px-6 py-4 text-right">
                                                         <button 
-                                                            onClick={() => setSelectedContact(contact)}
+                                                            onClick={() => {
+                                                                setSelectedContact(contact);
+                                                                setActiveDetailTab('profile');
+                                                            }}
                                                             className="text-xs text-brand-teal hover:text-brand-teal/80 font-bold"
                                                         >
                                                             Ver Ficha
@@ -388,9 +461,9 @@ export default function ContactsIndex({ contacts }) {
                                         Guardar Cambios
                                     </button>
                                 </div>
-                            </form>
+                             </form>
                         ) : (
-                        <div className="space-y-6">
+                        <div className="space-y-5 flex flex-col h-full">
                             {/* Profile header */}
                             <div className="text-center">
                                 <div className="mx-auto h-16 w-16 rounded-full bg-brand-teal text-white font-extrabold flex items-center justify-center text-xl uppercase shadow-md shadow-brand-teal/15 mb-3">
@@ -409,92 +482,178 @@ export default function ContactsIndex({ contacts }) {
                                 </div>
                             </div>
 
-                            <div className="h-px bg-slate-100"></div>
-
-                            {/* Contact info list */}
-                            <div className="space-y-4 text-xs">
-                                <div className="flex items-center gap-3 text-slate-600">
-                                    <Phone className="h-4 w-4 text-slate-400 shrink-0" />
-                                    <span className="font-mono font-semibold">{selectedContact.whatsapp_phone}</span>
-                                </div>
-                                {selectedContact.email && (
-                                    <div className="flex items-center gap-3 text-slate-600">
-                                        <Mail className="h-4 w-4 text-slate-400 shrink-0" />
-                                        <span className="truncate font-semibold">{selectedContact.email}</span>
-                                    </div>
-                                )}
-                                <div className="flex items-center gap-3 text-slate-650 font-semibold">
-                                    <TrendingUp className="h-4 w-4 text-brand-teal shrink-0" />
-                                    <span>Puntuación: <strong className="text-slate-850 font-mono font-bold">{selectedContact.lead_score}</strong> / 100</span>
-                                </div>
-                                {selectedContact.last_product && (
-                                    <div className="flex items-center gap-3 text-slate-650 font-semibold">
-                                        <Briefcase className="h-4 w-4 text-slate-400 shrink-0" />
-                                        <span>Último Servicio: <strong className="text-slate-850 font-bold">{selectedContact.last_product.name}</strong></span>
-                                    </div>
-                                )}
-                                {selectedContact.metadata && Object.keys(selectedContact.metadata).map((key) => (
-                                    <div key={key} className="flex items-start gap-3 text-slate-605 capitalize font-semibold">
-                                        <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
-                                        <span>{key}: <strong className="text-slate-850 font-bold">{selectedContact.metadata[key]}</strong></span>
-                                    </div>
-                                ))}
+                            {/* Details Tabs */}
+                            <div className="flex border-b border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveDetailTab('profile')}
+                                    className={`flex-1 pb-3 text-xs font-bold text-center border-b-2 transition-all ${
+                                        activeDetailTab === 'profile'
+                                            ? 'border-brand-teal text-brand-teal'
+                                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    Ficha Técnica
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveDetailTab('logs')}
+                                    className={`flex-1 pb-3 text-xs font-bold text-center border-b-2 transition-all flex items-center justify-center gap-1.5 ${
+                                        activeDetailTab === 'logs'
+                                            ? 'border-brand-teal text-brand-teal'
+                                            : 'border-transparent text-slate-400 hover:text-slate-600'
+                                    }`}
+                                >
+                                    Bitácora
+                                    <span className={`px-1.5 py-0.5 text-[9px] rounded-full font-extrabold ${
+                                        activeDetailTab === 'logs'
+                                            ? 'bg-brand-teal/10 text-brand-teal'
+                                            : 'bg-slate-100 text-slate-500'
+                                    }`}>
+                                        {selectedContact.automation_logs ? selectedContact.automation_logs.length : 0}
+                                    </span>
+                                </button>
                             </div>
 
-                            <div className="h-px bg-slate-100"></div>
-
-                            {/* Tags */}
-                            <div>
-                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                                    <Tag className="h-3.5 w-3.5 text-slate-400" />
-                                    Etiquetas del Lead
-                                </h4>
-                                {selectedContact.tags && selectedContact.tags.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1.5">
-                                        {selectedContact.tags.map((tag) => (
-                                            <span 
-                                                key={tag} 
-                                                className="text-[9px] px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 font-bold"
-                                            >
-                                                {tag}
-                                            </span>
+                            {/* Tab Content */}
+                            {activeDetailTab === 'logs' ? (
+                                <div className="space-y-4 flex-1 overflow-y-auto max-h-[350px] pr-1 scrollbar-thin">
+                                    {(!selectedContact.automation_logs || selectedContact.automation_logs.length === 0) ? (
+                                        <div className="text-center py-10 text-slate-400 bg-slate-50/55 border border-dashed border-slate-200 rounded-2xl p-4">
+                                            <AlertCircle className="mx-auto h-6 w-6 text-slate-300 mb-1.5" />
+                                            <span className="text-[11px] font-semibold">Sin registros de actividad aún.</span>
+                                        </div>
+                                    ) : (
+                                        Object.entries(groupLogsByDate(selectedContact.automation_logs)).map(([dateStr, logs]) => (
+                                            <div key={dateStr} className="space-y-2.5">
+                                                {/* Date Header */}
+                                                <div className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider sticky top-0 bg-white py-0.5 z-10">
+                                                    {dateStr}
+                                                </div>
+                                                
+                                                {/* Timeline Items */}
+                                                <div className="relative pl-4 border-l border-slate-100 ml-1.5 space-y-3">
+                                                    {logs.map((log) => {
+                                                        const eventDetails = getEventDetails(log);
+                                                        const IconComponent = eventDetails.icon;
+                                                        
+                                                        return (
+                                                            <div key={log.id} className="relative">
+                                                                {/* Bullet Point */}
+                                                                <span className={`absolute -left-[21.5px] top-0.5 flex h-4.5 w-4.5 items-center justify-center rounded-full border bg-white shadow-sm ${eventDetails.color}`}>
+                                                                    <IconComponent className="h-2.5 w-2.5" />
+                                                                </span>
+                                                                
+                                                                <div className="text-xs">
+                                                                    <div className="flex items-center justify-between gap-2">
+                                                                        <span className="font-bold text-slate-700">{eventDetails.title}</span>
+                                                                        <span className="text-[9px] font-semibold text-slate-400 font-mono">
+                                                                            {new Date(log.executed_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                                        </span>
+                                                                    </div>
+                                                                    <p className="text-[11px] text-slate-550 mt-0.5 leading-relaxed">
+                                                                        {log.actions_executed?.description || log.error_message || 'Acción ejecutada'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="space-y-5 flex-1">
+                                    {/* Contact info list */}
+                                    <div className="space-y-3.5 text-xs">
+                                        <div className="flex items-center gap-3 text-slate-600">
+                                            <Phone className="h-4 w-4 text-slate-400 shrink-0" />
+                                            <span className="font-mono font-semibold">{selectedContact.whatsapp_phone}</span>
+                                        </div>
+                                        {selectedContact.email && (
+                                            <div className="flex items-center gap-3 text-slate-600">
+                                                <Mail className="h-4 w-4 text-slate-400 shrink-0" />
+                                                <span className="truncate font-semibold">{selectedContact.email}</span>
+                                            </div>
+                                        )}
+                                        <div className="flex items-center gap-3 text-slate-650 font-semibold">
+                                            <TrendingUp className="h-4 w-4 text-brand-teal shrink-0" />
+                                            <span>Puntuación: <strong className="text-slate-850 font-mono font-bold">{selectedContact.lead_score}</strong> / 100</span>
+                                        </div>
+                                        {selectedContact.last_product && (
+                                            <div className="flex items-center gap-3 text-slate-650 font-semibold">
+                                                <Briefcase className="h-4 w-4 text-slate-400 shrink-0" />
+                                                <span>Último Servicio: <strong className="text-slate-850 font-bold">{selectedContact.last_product.name}</strong></span>
+                                            </div>
+                                        )}
+                                        {selectedContact.metadata && Object.keys(selectedContact.metadata).map((key) => (
+                                            <div key={key} className="flex items-start gap-3 text-slate-605 capitalize font-semibold">
+                                                <MapPin className="h-4 w-4 text-slate-400 shrink-0 mt-0.5" />
+                                                <span>{key}: <strong className="text-slate-850 font-bold">{selectedContact.metadata[key]}</strong></span>
+                                            </div>
                                         ))}
                                     </div>
-                                ) : (
-                                    <span className="text-xs text-slate-350 italic">Sin etiquetas</span>
-                                )}
-                            </div>
 
-                            <div className="h-px bg-slate-100"></div>
+                                    <div className="h-px bg-slate-100"></div>
 
-                            {/* Quick Action bot toggle */}
-                            <div className="flex gap-2">
-                                <button className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
-                                    selectedContact.bot_paused
-                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-sm'
-                                        : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/80 shadow-sm'
-                                }`}>
-                                    {selectedContact.bot_paused ? (
-                                        <>
-                                            <Play className="h-3.5 w-3.5 text-emerald-600" />
-                                            Reactivar Bot IA
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Pause className="h-3.5 w-3.5 text-amber-600" />
-                                            Pausar Bot IA
-                                        </>
-                                    )}
-                                </button>
-                                
-                                <button 
-                                    onClick={handleEditClick}
-                                    className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all shadow-sm"
-                                >
-                                    <Edit3 className="h-3.5 w-3.5" />
-                                    Editar Info
-                                </button>
-                            </div>
+                                    {/* Tags */}
+                                    <div>
+                                        <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                            <Tag className="h-3.5 w-3.5 text-slate-400" />
+                                            Etiquetas del Lead
+                                        </h4>
+                                        {selectedContact.tags && selectedContact.tags.length > 0 ? (
+                                            <div className="flex flex-wrap gap-1.5">
+                                                {selectedContact.tags.map((tag) => (
+                                                    <span 
+                                                        key={tag} 
+                                                        className="text-[9px] px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-slate-600 font-bold"
+                                                    >
+                                                        {tag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <span className="text-xs text-slate-350 italic">Sin etiquetas</span>
+                                        )}
+                                    </div>
+
+                                    <div className="h-px bg-slate-100"></div>
+
+                                    {/* Quick Action bot toggle */}
+                                    <div className="flex gap-2 mt-auto">
+                                        <button 
+                                            type="button"
+                                            className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
+                                            selectedContact.bot_paused
+                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-sm'
+                                                : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100/80 shadow-sm'
+                                        }`}>
+                                            {selectedContact.bot_paused ? (
+                                                <>
+                                                    <Play className="h-3.5 w-3.5 text-emerald-600" />
+                                                    Reactivar Bot IA
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Pause className="h-3.5 w-3.5 text-amber-600" />
+                                                    Pausar Bot IA
+                                                </>
+                                            )}
+                                        </button>
+                                        
+                                        <button 
+                                            type="button"
+                                            onClick={handleEditClick}
+                                            className="flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-bold transition-all shadow-sm"
+                                        >
+                                            <Edit3 className="h-3.5 w-3.5" />
+                                            Editar Info
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         )
                     ) : (
