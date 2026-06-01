@@ -62,7 +62,7 @@ class WhatsMarkService
     /**
      * Send a WhatsApp template message (Meta official template).
      */
-    public function sendTemplate(string $phone, string $template, array $params = []): ?string
+    public function sendTemplate(string $phone, string $template, array $params = [], array $headerParams = [], array $buttonParams = []): ?string
     {
         try {
             if (!$this->instanceId) {
@@ -86,8 +86,39 @@ class WhatsMarkService
                 'phone_number' => $phone,
                 'template_name' => $template,
                 'template_language' => $language,
-                'params' => $params,
             ];
+
+            // Map header parameters
+            if (!empty($headerParams)) {
+                $i = 1;
+                foreach ($headerParams as $hParam) {
+                    $payload["header_field_{$i}"] = $hParam;
+                    $i++;
+                }
+            }
+
+            // Map body parameters
+            if (!empty($params)) {
+                // If it is already an associative array with field keys, merge directly
+                if (isset($params['field_1']) || isset($params['header_field_1'])) {
+                    $payload = array_merge($payload, $params);
+                } else {
+                    $i = 1;
+                    foreach ($params as $param) {
+                        $payload["field_{$i}"] = $param;
+                        $i++;
+                    }
+                }
+            }
+
+            // Map button parameters
+            if (!empty($buttonParams)) {
+                $i = 0;
+                foreach ($buttonParams as $bParam) {
+                    $payload["button_{$i}"] = $bParam;
+                    $i++;
+                }
+            }
 
             $request = Http::timeout(10);
             if ($this->apiKey) {
@@ -107,7 +138,9 @@ class WhatsMarkService
             Log::error("WhatsMark sendTemplate exception: {$e->getMessage()}", [
                 'phone' => $phone,
                 'template' => $template,
-                'params' => $params
+                'params' => $params,
+                'headerParams' => $headerParams,
+                'buttonParams' => $buttonParams
             ]);
             return null;
         }
@@ -148,6 +181,224 @@ class WhatsMarkService
     }
 
     /**
+     * Get all statuses from WhatsMark.
+     */
+    public function getStatuses(): array
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark getStatuses failed: No instance_id provided.");
+                return [];
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/statuses';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->get($endpoint);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data']['data'] ?? $data['data'] ?? [];
+            }
+
+            Log::error("WhatsMark getStatuses failed. Status: {$response->status()}, Response: {$response->body()}");
+            return [];
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark getStatuses exception: {$e->getMessage()}");
+            return [];
+        }
+    }
+
+    /**
+     * Create a status in WhatsMark.
+     */
+    public function createStatus(string $name, string $color = '#4f46e5'): ?int
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark createStatus failed: No instance_id provided.");
+                return null;
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/statuses';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->post($endpoint, [
+                'name' => $name,
+                'color' => $color,
+                'isdefault' => false,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data']['id'] ?? null;
+            }
+
+            Log::error("WhatsMark createStatus failed. Status: {$response->status()}, Response: {$response->body()}");
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark createStatus exception: {$e->getMessage()}");
+            return null;
+        }
+    }
+
+    /**
+     * Get all sources from WhatsMark.
+     */
+    public function getSources(): array
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark getSources failed: No instance_id provided.");
+                return [];
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/sources';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->get($endpoint);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data']['data'] ?? $data['data'] ?? [];
+            }
+
+            Log::error("WhatsMark getSources failed. Status: {$response->status()}, Response: {$response->body()}");
+            return [];
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark getSources exception: {$e->getMessage()}");
+            return [];
+        }
+    }
+
+    /**
+     * Create a source in WhatsMark.
+     */
+    public function createSource(string $name): ?int
+    {
+        try {
+            if (!$this->instanceId) {
+                Log::error("WhatsMark createSource failed: No instance_id provided.");
+                return null;
+            }
+
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/sources';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->post($endpoint, [
+                'name' => $name,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['data']['id'] ?? null;
+            }
+
+            Log::error("WhatsMark createSource failed. Status: {$response->status()}, Response: {$response->body()}");
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark createSource exception: {$e->getMessage()}");
+            return null;
+        }
+    }
+
+    /**
+     * Find a contact by phone number in WhatsMark using API V2.
+     */
+    public function findContactByPhone(string $phone): ?array
+    {
+        try {
+            $endpoint = rtrim($this->baseUrl, '/') . '/api/v2/contacts';
+            
+            $request = Http::timeout(10);
+            if ($this->apiKey) {
+                $request = $request->withToken($this->apiKey);
+            }
+
+            $response = $request->get($endpoint, [
+                'search' => $phone,
+            ]);
+
+            if ($response->successful()) {
+                $data = $response->json()['data'] ?? [];
+                
+                // Do exact phone match comparison
+                $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+                foreach ($data as $contact) {
+                    $cPhone = preg_replace('/[^0-9]/', '', $contact['phone'] ?? '');
+                    if ($cPhone === $cleanPhone) {
+                        return $contact;
+                    }
+                }
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            Log::error("WhatsMark findContactByPhone exception: {$e->getMessage()}");
+            return null;
+        }
+    }
+
+    /**
+     * Get or create a Status ID by its name.
+     */
+    public function getOrCreateStatusId(string $name): ?int
+    {
+        $statuses = $this->getStatuses();
+        foreach ($statuses as $status) {
+            if (strcasecmp($status['name'] ?? '', $name) === 0) {
+                return (int)$status['id'];
+            }
+        }
+
+        // Assign a nice color based on status name
+        $color = '#4f46e5'; // Default indigo
+        $lcName = strtolower($name);
+        if (str_contains($lcName, 'caliente') || str_contains($lcName, 'hot')) {
+            $color = '#ef4444'; // Red
+        } elseif (str_contains($lcName, 'nuevo') || str_contains($lcName, 'new')) {
+            $color = '#3b82f6'; // Blue
+        } elseif (str_contains($lcName, 'perdido') || str_contains($lcName, 'lost')) {
+            $color = '#9ca3af'; // Gray
+        } elseif (str_contains($lcName, 'cliente') || str_contains($lcName, 'customer')) {
+            $color = '#10b981'; // Green
+        }
+
+        return $this->createStatus($name, $color);
+    }
+
+    /**
+     * Get or create a Source ID by its name.
+     */
+    public function getOrCreateSourceId(string $name): ?int
+    {
+        $sources = $this->getSources();
+        foreach ($sources as $source) {
+            if (strcasecmp($source['name'] ?? '', $name) === 0) {
+                return (int)$source['id'];
+            }
+        }
+
+        return $this->createSource($name);
+    }
+
+    /**
      * Sync contact information to WhatsMark.
      */
     public function syncContact(string $phone, array $data): bool
@@ -158,21 +409,51 @@ class WhatsMarkService
                 return false;
             }
 
-            $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/contacts';
+            // 1. Search if contact exists in WhatsMark
+            $existingContact = $this->findContactByPhone($phone);
+            
+            // 2. Map Name to Firstname and Lastname
+            $fullName = $data['name'] ?? 'Cliente';
+            $nameParts = explode(' ', trim($fullName));
+            $firstname = $nameParts[0];
+            $lastname = implode(' ', array_slice($nameParts, 1)) ?: ' ';
 
-            // Clean phone to numeric only
-            $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+            // 3. Resolve status_id
+            $statusId = null;
+            if (!empty($data['status_name'])) {
+                $statusId = $this->getOrCreateStatusId($data['status_name']);
+            }
 
-            // Prepare payload supporting standard structure and custom variables
+            // 4. Resolve source_id
+            $sourceId = null;
+            if (!empty($data['source_name'])) {
+                $sourceId = $this->getOrCreateSourceId($data['source_name']);
+            }
+
+            // 5. Determine contact type
+            $type = $data['type'] ?? 'lead';
+            if (!in_array($type, ['lead', 'customer', 'guest'])) {
+                $type = 'lead';
+            }
+
+            // 6. Build groups comma-separated string
+            $groupsString = '';
+            if (!empty($data['groups'])) {
+                $groupsString = is_array($data['groups']) ? implode(',', $data['groups']) : $data['groups'];
+            }
+
+            // 7. Prepare payload
             $payload = [
-                'phone_number' => $phone,
                 'phone' => $phone,
-                'clean_phone' => $cleanPhone,
-                'name' => $data['name'] ?? null,
+                'firstname' => $firstname,
+                'lastname' => $lastname,
                 'email' => $data['email'] ?? null,
-                'tags' => $data['tags'] ?? [],
-                'custom_variables' => $data['custom_variables'] ?? [],
-                'variables' => $data['custom_variables'] ?? [],
+                'type' => $type,
+                'status_id' => $statusId,
+                'source_id' => $sourceId,
+                'groups' => $groupsString,
+                'company' => $data['company'] ?? null,
+                'description' => $data['description'] ?? null,
             ];
 
             // Filter out null values to keep it clean
@@ -185,8 +466,17 @@ class WhatsMarkService
                 $request = $request->withToken($this->apiKey);
             }
 
-            Log::info("WhatsMark syncContact sending request to {$endpoint} for phone {$phone}");
-            $response = $request->post($endpoint, $payload);
+            if ($existingContact && isset($existingContact['id'])) {
+                // Update existing contact
+                $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/contacts/' . $existingContact['id'];
+                Log::info("WhatsMark syncContact updating contact {$existingContact['id']} at {$endpoint}");
+                $response = $request->put($endpoint, $payload);
+            } else {
+                // Create new contact
+                $endpoint = rtrim($this->baseUrl, '/') . '/api/v1/' . $this->instanceId . '/contacts';
+                Log::info("WhatsMark syncContact creating contact at {$endpoint}");
+                $response = $request->post($endpoint, $payload);
+            }
 
             if ($response->successful()) {
                 Log::info("WhatsMark syncContact success for phone: {$phone}");
@@ -204,3 +494,4 @@ class WhatsMarkService
         }
     }
 }
+

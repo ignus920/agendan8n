@@ -36,22 +36,42 @@ class SyncContactToWhatsMarkJob implements ShouldQueue
 
         $whatsmarkService = new WhatsMarkService($tenant->whatsmark_api_key, $tenant->whatsmark_instance_id);
 
-        $customVariables = [
-            'lead_score' => $contact->lead_score,
-            'funnel_stage' => $contact->funnel_stage,
-            'funnel_stage_name' => Contact::FUNNEL_STAGES[$contact->funnel_stage] ?? $contact->funnel_stage,
-            'interest_level' => $contact->interest_level,
-            'interest_level_name' => Contact::INTEREST_LEVELS[$contact->interest_level] ?? $contact->interest_level,
-            'bot_paused' => $contact->bot_paused ? 'yes' : 'no',
-        ];
+        $statusName = Contact::FUNNEL_STAGES[$contact->funnel_stage] ?? 'Nuevo';
+        if ($contact->interest_level === 'hot' || $contact->lead_score >= 80) {
+            $statusName = 'Caliente';
+        }
 
-        $tags = is_array($contact->tags) ? $contact->tags : [];
+        $sourceName = $contact->metadata['source'] ?? $contact->metadata['utm_source'] ?? 'SAC';
+
+        $type = $contact->funnel_stage === 'customer' ? 'customer' : 'lead';
+
+        $groups = [];
+        if (!empty($contact->funnel_stage)) {
+            $groups[] = Contact::FUNNEL_STAGES[$contact->funnel_stage] ?? $contact->funnel_stage;
+        }
+        if (!empty($contact->interest_level) && $contact->interest_level !== 'unknown') {
+            $groups[] = Contact::INTEREST_LEVELS[$contact->interest_level] ?? $contact->interest_level;
+        }
+        if ($contact->lead_score >= 80) {
+            $groups[] = 'Score Alto';
+        } elseif ($contact->lead_score >= 50) {
+            $groups[] = 'Score Medio';
+        } else {
+            $groups[] = 'Score Bajo';
+        }
+        if (is_array($contact->tags)) {
+            foreach ($contact->tags as $tag) {
+                $groups[] = $tag;
+            }
+        }
 
         $syncData = [
             'name' => $contact->name,
             'email' => $contact->email,
-            'tags' => $tags,
-            'custom_variables' => $customVariables,
+            'type' => $type,
+            'status_name' => $statusName,
+            'source_name' => $sourceName,
+            'groups' => $groups,
         ];
 
         Log::info("SyncContactToWhatsMarkJob: Dispatching sync to WhatsMark for contact ID: {$contact->id}");

@@ -11,10 +11,11 @@ class Campaign extends Model
     use BelongsToTenant;
 
     protected $fillable = [
-        'tenant_id', 'name', 'template_name', 'template_params',
+        'tenant_id', 'whatsmark_campaign_id', 'name', 'template_name', 'template_params',
         'segment_filters', 'status', 'scheduled_at',
         'sent_count', 'delivered_count', 'read_count', 'daily_limit',
     ];
+
 
     protected $casts = [
         'template_params' => 'array',

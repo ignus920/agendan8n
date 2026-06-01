@@ -19,16 +19,38 @@ class CampaignController extends Controller
         $contacts = Contact::get(['id', 'name', 'funnel_stage', 'tags', 'interest_level']);
 
         $tenant = auth()->user()->tenant;
-        $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
-            $tenant->whatsmark_api_key,
-            $tenant->whatsmark_instance_id
-        );
-        $whatsmarkTemplates = $whatsmark->getTemplates();
+        $whatsmarkCampaigns = [];
+
+        if ($tenant && $tenant->whatsmark_instance_id) {
+            try {
+                $wmTenant = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('tenants')
+                    ->where('subdomain', $tenant->whatsmark_instance_id)
+                    ->first();
+
+                if ($wmTenant) {
+                    $whatsmarkCampaigns = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('campaigns')
+                        ->leftJoin('whatsapp_templates', function ($join) use ($wmTenant) {
+                            $join->on('campaigns.template_id', '=', 'whatsapp_templates.template_id')
+                                 ->where('whatsapp_templates.tenant_id', '=', $wmTenant->id);
+                        })
+                        ->where('campaigns.tenant_id', $wmTenant->id)
+                        ->get([
+                            'campaigns.id',
+                            'campaigns.name',
+                            'campaigns.template_id',
+                            'whatsapp_templates.template_name',
+                            'whatsapp_templates.language'
+                        ]);
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Error loading WhatsMark campaigns: " . $e->getMessage());
+            }
+        }
 
         return Inertia::render('Campaigns/Index', [
             'campaigns' => $campaigns,
             'contacts' => $contacts,
-            'whatsmarkTemplates' => $whatsmarkTemplates,
+            'whatsmarkCampaigns' => $whatsmarkCampaigns,
             'statuses' => Campaign::STATUSES
         ]);
     }
@@ -37,16 +59,43 @@ class CampaignController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'template_name' => 'required|string|max:255',
-            'template_params' => 'nullable|array',
+            'whatsmark_campaign_id' => 'required|integer',
             'segment_filters' => 'nullable|array',
             'scheduled_at' => 'nullable|date',
             'daily_limit' => 'integer|min:1',
         ]);
 
+        $tenant = auth()->user()->tenant;
+        $templateName = null;
+        if ($tenant && $tenant->whatsmark_instance_id) {
+            try {
+                $wmTenant = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('tenants')
+                    ->where('subdomain', $tenant->whatsmark_instance_id)
+                    ->first();
+
+                if ($wmTenant) {
+                    $wmCampaign = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('campaigns')
+                        ->leftJoin('whatsapp_templates', function ($join) use ($wmTenant) {
+                            $join->on('campaigns.template_id', '=', 'whatsapp_templates.template_id')
+                                 ->where('whatsapp_templates.tenant_id', '=', $wmTenant->id);
+                        })
+                        ->where('campaigns.id', $request->whatsmark_campaign_id)
+                        ->where('campaigns.tenant_id', $wmTenant->id)
+                        ->first(['whatsapp_templates.template_name']);
+                    
+                    if ($wmCampaign) {
+                        $templateName = $wmCampaign->template_name;
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Error fetching campaign template name from WhatsMark: " . $e->getMessage());
+            }
+        }
+
         $campaign = Campaign::create(array_merge($validated, [
             'status' => $request->filled('scheduled_at') ? 'scheduled' : 'draft',
-            'template_params' => $request->input('template_params', []),
+            'template_name' => $templateName,
+            'template_params' => [],
             'segment_filters' => $request->input('segment_filters', []),
         ]));
 
@@ -57,16 +106,43 @@ class CampaignController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'template_name' => 'required|string|max:255',
-            'template_params' => 'nullable|array',
+            'whatsmark_campaign_id' => 'required|integer',
             'segment_filters' => 'nullable|array',
             'scheduled_at' => 'nullable|date',
             'daily_limit' => 'integer|min:1',
             'status' => 'required|string|in:draft,scheduled,sending,sent,cancelled',
         ]);
 
+        $tenant = auth()->user()->tenant;
+        $templateName = null;
+        if ($tenant && $tenant->whatsmark_instance_id) {
+            try {
+                $wmTenant = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('tenants')
+                    ->where('subdomain', $tenant->whatsmark_instance_id)
+                    ->first();
+
+                if ($wmTenant) {
+                    $wmCampaign = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('campaigns')
+                        ->leftJoin('whatsapp_templates', function ($join) use ($wmTenant) {
+                            $join->on('campaigns.template_id', '=', 'whatsapp_templates.template_id')
+                                 ->where('whatsapp_templates.tenant_id', '=', $wmTenant->id);
+                        })
+                        ->where('campaigns.id', $request->whatsmark_campaign_id)
+                        ->where('campaigns.tenant_id', $wmTenant->id)
+                        ->first(['whatsapp_templates.template_name']);
+                    
+                    if ($wmCampaign) {
+                        $templateName = $wmCampaign->template_name;
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::error("Error fetching campaign template name from WhatsMark: " . $e->getMessage());
+            }
+        }
+
         $campaign->update(array_merge($validated, [
-            'template_params' => $request->input('template_params', []),
+            'template_name' => $templateName ?: $campaign->template_name,
+            'template_params' => [],
             'segment_filters' => $request->input('segment_filters', []),
         ]));
 
@@ -86,10 +162,50 @@ class CampaignController extends Controller
             return redirect()->back()->with('error', 'Esta campaña ya fue enviada.');
         }
 
+        $tenant = auth()->user()->tenant;
+        if (!$tenant || !$tenant->whatsmark_api_key || !$tenant->whatsmark_instance_id) {
+            return redirect()->back()->with('error', 'Configuración de WhatsMark incompleta para el cliente.');
+        }
+
+        // Fetch WhatsMark campaign details
+        $wmCampaign = null;
+        try {
+            $wmTenant = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('tenants')
+                ->where('subdomain', $tenant->whatsmark_instance_id)
+                ->first();
+
+            if ($wmTenant) {
+                $wmCampaign = \Illuminate\Support\Facades\DB::connection('whatsmark')->table('campaigns')
+                    ->leftJoin('whatsapp_templates', function ($join) use ($wmTenant) {
+                        $join->on('campaigns.template_id', '=', 'whatsapp_templates.template_id')
+                             ->where('whatsapp_templates.tenant_id', '=', $wmTenant->id);
+                    })
+                    ->where('campaigns.id', $campaign->whatsmark_campaign_id)
+                    ->where('campaigns.tenant_id', $wmTenant->id)
+                    ->first([
+                        'campaigns.id',
+                        'campaigns.name',
+                        'campaigns.template_id',
+                        'whatsapp_templates.template_name',
+                        'whatsapp_templates.language',
+                        'campaigns.header_params',
+                        'campaigns.body_params',
+                        'campaigns.footer_params'
+                    ]);
+            }
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::error("Error loading campaign from WhatsMark during send: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Error de conexión con la base de datos de WhatsMark.');
+        }
+
+        if (!$wmCampaign) {
+            return redirect()->back()->with('error', 'No se encontró la campaña asociada en WhatsMark.');
+        }
+
         $campaign->update(['status' => 'sending']);
 
         // Segment contacts based on segment_filters
-        $query = Contact::query();
+        $query = Contact::query()->where('tenant_id', $campaign->tenant_id);
         $filters = $campaign->segment_filters;
 
         if (!empty($filters['funnel_stage'])) {
@@ -124,27 +240,42 @@ class CampaignController extends Controller
         // Delete previous recipients if any
         $campaign->recipients()->delete();
 
-        $tenant = auth()->user()->tenant;
         $whatsmark = new \App\Services\WhatsMark\WhatsMarkService(
             $tenant->whatsmark_api_key,
             $tenant->whatsmark_instance_id
         );
+
+        $headerParams = json_decode($wmCampaign->header_params, true) ?: [];
+        $bodyParams = json_decode($wmCampaign->body_params, true) ?: [];
+        $footerParams = json_decode($wmCampaign->footer_params, true) ?: [];
 
         $sentCount = 0;
         $deliveredCount = 0;
 
         foreach ($contacts as $contact) {
             // Resolve placeholders in template parameters for this contact
-            $resolvedParams = [];
-            foreach (($campaign->template_params ?: []) as $paramValue) {
-                $resolvedParams[] = $this->parsePlaceholders($paramValue, $contact);
+            $resolvedBodyParams = [];
+            foreach ($bodyParams as $paramValue) {
+                $resolvedBodyParams[] = $this->parsePlaceholders($paramValue, $contact);
+            }
+
+            $resolvedHeaderParams = [];
+            foreach ($headerParams as $paramValue) {
+                $resolvedHeaderParams[] = $this->parsePlaceholders($paramValue, $contact);
+            }
+
+            $resolvedFooterParams = [];
+            foreach ($footerParams as $paramValue) {
+                $resolvedFooterParams[] = $this->parsePlaceholders($paramValue, $contact);
             }
 
             // Call WhatsMark API to send the template message
             $messageId = $whatsmark->sendTemplate(
                 $contact->whatsapp_phone,
-                $campaign->template_name,
-                $resolvedParams
+                $wmCampaign->template_name,
+                $resolvedBodyParams,
+                $resolvedHeaderParams,
+                $resolvedFooterParams
             );
 
             $isDelivered = !empty($messageId);
@@ -167,7 +298,7 @@ class CampaignController extends Controller
             'status' => 'sent',
             'sent_count' => $sentCount,
             'delivered_count' => $deliveredCount,
-            'read_count' => 0, // Read count will be updated via inbound webhook when read receipt is received
+            'read_count' => 0,
         ]);
 
         return redirect()->back()->with('success', "Campaña enviada a {$sentCount} contactos.");

@@ -18,17 +18,13 @@ import {
     AlertCircle
 } from 'lucide-react';
 
-export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates = [], statuses }) {
+export default function CampaignsIndex({ campaigns, contacts, whatsmarkCampaigns = [], statuses }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState(null);
 
-    // Get the first template name or fallback
-    const defaultTemplateName = whatsmarkTemplates.length > 0 ? whatsmarkTemplates[0].template_name : 'promo_recompra_v2';
-
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
-        template_name: defaultTemplateName,
-        template_params: {},
+        whatsmark_campaign_id: '',
         segment_filters: { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
         scheduled_at: '',
         daily_limit: 100,
@@ -39,6 +35,9 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
         setEditingCampaign(null);
         clearErrors();
         reset();
+        if (whatsmarkCampaigns.length > 0) {
+            setData('whatsmark_campaign_id', whatsmarkCampaigns[0].id);
+        }
         setIsModalOpen(true);
     };
 
@@ -47,8 +46,7 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
         clearErrors();
         setData({
             name: campaign.name || '',
-            template_name: campaign.template_name || '',
-            template_params: campaign.template_params || {},
+            whatsmark_campaign_id: campaign.whatsmark_campaign_id || '',
             segment_filters: campaign.segment_filters || { funnel_stage: '', interest_level: '', tag: '', min_score: '', max_score: '', inactive_days: '' },
             scheduled_at: campaign.scheduled_at ? campaign.scheduled_at.replace('.000000Z', '').slice(0, 16) : '',
             daily_limit: campaign.daily_limit || 100,
@@ -437,77 +435,31 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkTemplates
                                             required
                                         />
                                         {errors.name && <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1"><AlertCircle className="h-3 w-3" />{errors.name}</div>}
-                                        
-                                        {/* Template Name */}
-                                     <div>
-                                         <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Plantilla de WhatsApp Homologada *</label>
-                                         <select
-                                             value={data.template_name}
-                                             onChange={e => {
-                                                 const tName = e.target.value;
-                                                 setData('template_name', tName);
-                                                 // Reset template parameters structure when template changes
-                                                 setData('template_params', {});
-                                             }}
-                                             className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
-                                         >
-                                             {whatsmarkTemplates.length === 0 ? (
-                                                 <option value="">No hay plantillas homologadas disponibles</option>
-                                             ) : (
-                                                 whatsmarkTemplates.map((t) => (
-                                                     <option key={t.id} value={t.template_name}>
-                                                         {t.template_name} ({t.category})
-                                                     </option>
-                                                 ))
-                                             )}
-                                         </select>
-                                     </div>
-
-                                     {/* Template Parameters */}
-                                     {(() => {
-                                         const selectedT = whatsmarkTemplates.find(t => t.template_name === data.template_name);
-                                         if (!selectedT) return null;
-
-                                         // Match variables like {{1}}, {{2}} in the body_data text
-                                         const bodyData = selectedT.body_data || '';
-                                         const matches = bodyData.match(/\{\{\d+\}\}/g) || [];
-                                         const variables = [...new Set(matches)].sort(); // unique and sorted, e.g. ["{{1}}", "{{2}}"]
-
-                                         if (variables.length === 0) return null;
-
-                                         return (
-                                             <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-3">
-                                                 <h4 className="text-xs font-extrabold text-slate-700 mb-1.5 flex items-center gap-1.5">
-                                                     <Sliders className="h-4 w-4 text-brand-teal" />
-                                                     Parámetros de la Plantilla ({selectedT.template_name})
-                                                 </h4>
-                                                 <p className="text-[10px] text-slate-500 font-mono italic mb-2">Vista previa: "{bodyData}"</p>
-                                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                                     {variables.map((variable) => {
-                                                         const varIndex = variable.replace(/[\{\}]/g, ''); // Extract index number, e.g. "1", "2"
-                                                         return (
-                                                             <div key={variable}>
-                                                                 <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Variable {variable}</label>
-                                                                 <input
-                                                                     type="text"
-                                                                     value={data.template_params[varIndex] || ''}
-                                                                     onChange={e => {
-                                                                         const updatedParams = { ...data.template_params };
-                                                                         updatedParams[varIndex] = e.target.value;
-                                                                         setData('template_params', updatedParams);
-                                                                     }}
-                                                                     placeholder={`Valor para variable ${variable}`}
-                                                                     className="block w-full px-3 py-1.5 border border-slate-250 rounded-xl bg-white text-xs focus:outline-none focus:border-brand-teal transition-colors"
-                                                                     required
-                                                                 />
-                                                             </div>
-                                                         );
-                                                     })}
-                                                 </div>
-                                             </div>
-                                         );
-                                     })()}
                                     </div>
+
+                                    {/* WhatsMark Campaign Select */}
+                                        <div className="mt-4">
+                                            <label className="block text-xs font-bold text-slate-700 uppercase mb-1">Campaña de WhatsMark *</label>
+                                            <select
+                                                value={data.whatsmark_campaign_id}
+                                                onChange={e => setData('whatsmark_campaign_id', e.target.value)}
+                                                className="block w-full px-3 py-2 border border-slate-200 rounded-xl bg-slate-50 text-sm focus:outline-none focus:bg-white focus:border-brand-teal transition-colors"
+                                                required
+                                            >
+                                                <option value="">Selecciona una campaña...</option>
+                                                {whatsmarkCampaigns.map((c) => (
+                                                    <option key={c.id} value={c.id}>
+                                                        {c.name} {c.template_name ? `(${c.template_name})` : ''}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            {errors.whatsmark_campaign_id && (
+                                                <div className="text-xs text-red-500 font-semibold mt-1 flex items-center gap-1">
+                                                    <AlertCircle className="h-3 w-3" />
+                                                    {errors.whatsmark_campaign_id}
+                                                </div>
+                                            )}
+                                        </div>
 
                                     {/* Segment Filters */}
                                     <div className="bg-slate-50 border border-slate-150 p-4 rounded-2xl space-y-3">
