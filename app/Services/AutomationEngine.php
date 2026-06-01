@@ -245,7 +245,11 @@ class AutomationEngine
         $message = $params['message'] ?? null;
 
         if ($template) {
-            return $whatsmark->sendTemplate($contact->whatsapp_phone, $template, $params['template_params'] ?? []);
+            $resolvedParams = [];
+            foreach (($params['template_params'] ?? []) as $paramValue) {
+                $resolvedParams[] = $this->parsePlaceholders($paramValue, $contact);
+            }
+            return $whatsmark->sendTemplate($contact->whatsapp_phone, $template, $resolvedParams);
         }
 
         if ($message) {

@@ -134,11 +134,17 @@ class CampaignController extends Controller
         $deliveredCount = 0;
 
         foreach ($contacts as $contact) {
+            // Resolve placeholders in template parameters for this contact
+            $resolvedParams = [];
+            foreach (($campaign->template_params ?: []) as $paramValue) {
+                $resolvedParams[] = $this->parsePlaceholders($paramValue, $contact);
+            }
+
             // Call WhatsMark API to send the template message
             $messageId = $whatsmark->sendTemplate(
                 $contact->whatsapp_phone,
                 $campaign->template_name,
-                $campaign->template_params ?: []
+                $resolvedParams
             );
 
             $isDelivered = !empty($messageId);
@@ -165,5 +171,46 @@ class CampaignController extends Controller
         ]);
 
         return redirect()->back()->with('success', "Campaña enviada a {$sentCount} contactos.");
+    }
+
+    /**
+     * Parse dynamic placeholders in template parameters.
+     */
+    protected function parsePlaceholders(string $message, Contact $contact): string
+    {
+        // 1. Replace contact placeholders
+        $message = str_replace('{contact.name}', $contact->name ?? 'Cliente', $message);
+        $message = str_replace('{contact.phone}', $contact->whatsapp_phone, $message);
+        $message = str_replace('{contact.lead_score}', $contact->lead_score, $message);
+        
+        // Also support just {name} and {phone}
+        $message = str_replace('{name}', $contact->name ?? 'Cliente', $message);
+        $message = str_replace('{phone}', $contact->whatsapp_phone, $message);
+
+        // 2. Replace {products_list} placeholder with dynamic DB products
+        if (str_contains($message, '{products_list}')) {
+            $products = \App\Models\Product::where('tenant_id', $contact->tenant_id)
+                ->where('status', 'active')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+            $list = "";
+            if ($products->isEmpty()) {
+                $list = "No tenemos servicios disponibles en este momento.";
+            } else {
+                $index = 1;
+                foreach ($products as $product) {
+                    $formattedPrice = number_format($product->price, 0, ',', '.');
+                    $safeDescription = trim(strip_tags($product->description));
+                    $safeDescription = \Illuminate\Support\Str::limit($safeDescription, 120);
+                    $list .= "• *{$index}. {$product->name}*: \${$formattedPrice} USD\n{$safeDescription}\n\n";
+                    $index++;
+                }
+            }
+            $message = str_replace('{products_list}', trim($list), $message);
+        }
+
+        return $message;
     }
 }
