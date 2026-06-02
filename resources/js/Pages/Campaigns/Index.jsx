@@ -21,6 +21,7 @@ import {
 export default function CampaignsIndex({ campaigns, contacts, whatsmarkCampaigns = [], statuses }) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCampaign, setEditingCampaign] = useState(null);
+    const [selectedCampaignForRecipients, setSelectedCampaignForRecipients] = useState(null);
 
     const { data, setData, post, put, delete: destroy, processing, errors, reset, clearErrors, transform } = useForm({
         name: '',
@@ -344,8 +345,18 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkCampaigns
                                                         
                                                         {/* Details */}
                                                         <div className="grid grid-cols-3 text-[10px] font-semibold text-slate-500 text-center divide-x divide-slate-100">
-                                                            <div>
-                                                                <div className="text-slate-800 font-extrabold">{campaign.sent_count}</div>
+                                                            <div 
+                                                                className={campaign.recipients && campaign.recipients.length > 0 ? "cursor-pointer hover:bg-slate-50 p-1 rounded transition-all" : ""}
+                                                                onClick={() => {
+                                                                    if (campaign.recipients && campaign.recipients.length > 0) {
+                                                                        setSelectedCampaignForRecipients(campaign);
+                                                                    }
+                                                                }}
+                                                                title={campaign.recipients && campaign.recipients.length > 0 ? "Hacer clic para ver destinatarios" : ""}
+                                                            >
+                                                                <div className="text-slate-850 font-extrabold underline decoration-dotted hover:text-brand-teal transition-colors">
+                                                                    {campaign.sent_count}
+                                                                </div>
                                                                 <div>Enviados</div>
                                                             </div>
                                                             <div>
@@ -606,6 +617,79 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkCampaigns
                                     </button>
                                 </div>
                             </form>
+                        </div>
+                    </div>
+                </div>
+            {/* View Recipients Modal */}
+            {selectedCampaignForRecipients && (
+                <div className="fixed inset-0 z-50 overflow-y-auto">
+                    <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm transition-opacity" onClick={() => setSelectedCampaignForRecipients(null)}></div>
+                    <div className="flex min-h-full items-center justify-center p-4 text-center">
+                        <div className="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all w-full max-w-lg animate-fade-in-up">
+                            {/* Header */}
+                            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                                <h3 className="text-base font-bold text-slate-850 flex items-center gap-2">
+                                    <Users className="h-5 w-5 text-brand-teal" />
+                                    <span>Destinatarios de la Campaña</span>
+                                </h3>
+                                <button onClick={() => setSelectedCampaignForRecipients(null)} className="p-1.5 rounded-lg hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-colors">
+                                    <X className="h-5 w-5" />
+                                </button>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
+                                <div className="text-xs text-slate-500 mb-2">
+                                    Mostrando los destinatarios de la campaña: <strong className="text-slate-700">{selectedCampaignForRecipients.name}</strong>
+                                </div>
+                                <div className="border border-slate-150 rounded-xl overflow-hidden shadow-sm">
+                                    <table className="w-full text-left border-collapse text-xs">
+                                        <thead>
+                                            <tr className="bg-slate-50 border-b border-slate-100 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                                                <th className="px-4 py-3">Cliente</th>
+                                                <th className="px-4 py-3">WhatsApp</th>
+                                                <th className="px-4 py-3 text-center">Estado</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-50">
+                                            {selectedCampaignForRecipients.recipients.map((recipient) => (
+                                                <tr key={recipient.id} className="hover:bg-slate-50/50">
+                                                    <td className="px-4 py-3 font-semibold text-slate-850">
+                                                        {recipient.contact?.name || 'Cliente sin nombre'}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-mono text-slate-500">
+                                                        {recipient.contact?.whatsapp_phone || '-'}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`inline-flex px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                                                            recipient.status === 'sent' 
+                                                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200' 
+                                                                : 'bg-red-50 text-red-700 border-red-200'
+                                                        }`}>
+                                                            {recipient.status === 'sent' ? 'Entregado' : 'Falló'}
+                                                        </span>
+                                                        {recipient.error_message && (
+                                                            <div className="text-[9px] text-red-500 mt-0.5 truncate max-w-[120px] mx-auto" title={recipient.error_message}>
+                                                                {recipient.error_message}
+                                                            </div>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            {/* Footer */}
+                            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end rounded-b-2xl">
+                                <button
+                                    onClick={() => setSelectedCampaignForRecipients(null)}
+                                    className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                                >
+                                    Cerrar
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>

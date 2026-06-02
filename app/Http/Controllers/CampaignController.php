@@ -12,7 +12,7 @@ class CampaignController extends Controller
 {
     public function index()
     {
-        $campaigns = Campaign::withCount('recipients')
+        $campaigns = Campaign::with(['recipients.contact'])
             ->orderByDesc('created_at')
             ->get();
 
