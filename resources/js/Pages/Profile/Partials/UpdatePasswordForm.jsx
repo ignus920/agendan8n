@@ -47,11 +47,11 @@ export default function UpdatePasswordForm({ className = '' }) {
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-slate-800">
+                <h2 className="text-lg font-medium text-slate-800 dark:text-slate-800">
                     Actualizar Contraseña
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
                     Asegúrate de que tu cuenta utilice una contraseña larga y aleatoria para mantener la seguridad.
                 </p>
             </header>
@@ -61,7 +61,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                     <InputLabel
                         htmlFor="current_password"
                         value="Contraseña Actual"
-                        className="text-slate-700"
+                        className="text-slate-700 dark:text-slate-700"
                     />
 
                     <TextInput
@@ -72,7 +72,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                             setData('current_password', e.target.value)
                         }
                         type="password"
-                        className="mt-1 block w-full bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                         autoComplete="current-password"
                     />
 
@@ -83,7 +83,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="password" value="Nueva Contraseña" className="text-slate-700" />
+                    <InputLabel htmlFor="password" value="Nueva Contraseña" className="text-slate-700 dark:text-slate-700" />
 
                     <TextInput
                         id="password"
@@ -91,7 +91,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                         value={data.password}
                         onChange={(e) => setData('password', e.target.value)}
                         type="password"
-                        className="mt-1 block w-full bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                         autoComplete="new-password"
                     />
 
@@ -102,7 +102,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                     <InputLabel
                         htmlFor="password_confirmation"
                         value="Confirmar Contraseña"
-                        className="text-slate-700"
+                        className="text-slate-700 dark:text-slate-700"
                     />
 
                     <TextInput
@@ -112,7 +112,7 @@ export default function UpdatePasswordForm({ className = '' }) {
                             setData('password_confirmation', e.target.value)
                         }
                         type="password"
-                        className="mt-1 block w-full bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                         autoComplete="new-password"
                     />
 

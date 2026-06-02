@@ -48,11 +48,11 @@ export default function DeleteUserForm({ className = '' }) {
     return (
         <section className={`space-y-6 ${className}`}>
             <header>
-                <h2 className="text-lg font-medium text-slate-800">
+                <h2 className="text-lg font-medium text-slate-800 dark:text-slate-800">
                     Eliminar Cuenta
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
                     Una vez eliminada tu cuenta, todos sus recursos y datos se borrarán permanentemente. Antes de proceder, descarga cualquier información que desees conservar.
                 </p>
             </header>
@@ -63,11 +63,11 @@ export default function DeleteUserForm({ className = '' }) {
 
             <Modal show={confirmingUserDeletion} onClose={closeModal}>
                 <form onSubmit={deleteUser} className="p-6 bg-white border border-slate-200 rounded-2xl">
-                    <h2 className="text-lg font-medium text-slate-800">
+                    <h2 className="text-lg font-medium text-slate-800 dark:text-slate-800">
                         ¿Estás seguro de que deseas eliminar tu cuenta?
                     </h2>
 
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
                         Una vez que tu cuenta sea eliminada, todos sus recursos y datos se borrarán permanentemente. Por favor, introduce tu contraseña para confirmar que deseas eliminarla de forma permanente.
                     </p>
 
@@ -87,7 +87,7 @@ export default function DeleteUserForm({ className = '' }) {
                             onChange={(e) =>
                                 setData('password', e.target.value)
                             }
-                            className="mt-1 block w-3/4 bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                            className="mt-1 block w-3/4 bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                             isFocused
                             placeholder="Contraseña"
                         />

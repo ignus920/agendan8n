@@ -27,22 +27,22 @@ export default function UpdateProfileInformation({
     return (
         <section className={className}>
             <header>
-                <h2 className="text-lg font-medium text-slate-800">
+                <h2 className="text-lg font-medium text-slate-800 dark:text-slate-800">
                     Información del Perfil
                 </h2>
 
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-500 dark:text-slate-500">
                     Actualiza la información de tu perfil y la dirección de correo electrónico de tu cuenta.
                 </p>
             </header>
 
             <form onSubmit={submit} className="mt-6 space-y-6">
                 <div>
-                    <InputLabel htmlFor="name" value="Nombre" className="text-slate-700" />
+                    <InputLabel htmlFor="name" value="Nombre" className="text-slate-700 dark:text-slate-700" />
 
                     <TextInput
                         id="name"
-                        className="mt-1 block w-full bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                         value={data.name}
                         onChange={(e) => setData('name', e.target.value)}
                         required
@@ -54,12 +54,12 @@ export default function UpdateProfileInformation({
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="email" value="Correo Electrónico" className="text-slate-700" />
+                    <InputLabel htmlFor="email" value="Correo Electrónico" className="text-slate-700 dark:text-slate-700" />
 
                     <TextInput
                         id="email"
                         type="email"
-                        className="mt-1 block w-full bg-white border-slate-300 text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
+                        className="mt-1 block w-full bg-white dark:bg-white border-slate-300 dark:border-slate-300 text-slate-900 dark:text-slate-900 focus:border-indigo-500 focus:ring-indigo-500"
                         value={data.email}
                         onChange={(e) => setData('email', e.target.value)}
                         required
