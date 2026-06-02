@@ -29,6 +29,7 @@ class ContactController extends Controller
             'interest_level' => 'required|string|in:unknown,low,medium,high,hot',
             'tags' => 'nullable|array',
             'tags.*' => 'string',
+            'bot_paused' => 'nullable|boolean',
         ]);
 
         $contact->update($validated);

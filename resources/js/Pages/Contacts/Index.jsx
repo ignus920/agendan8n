@@ -116,7 +116,21 @@ export default function ContactsIndex({ contacts }) {
             const updatedContact = contacts.find(c => c.id === selectedContact.id);
             if (updatedContact) setSelectedContact(updatedContact);
         }
-    }, [contacts]);
+    }, [contacts, isEditing]);
+
+    const toggleBotPause = (contact) => {
+        router.put(route('contacts.update', contact.id), {
+            name: contact.name,
+            email: contact.email,
+            whatsapp_phone: contact.whatsapp_phone,
+            funnel_stage: contact.funnel_stage,
+            interest_level: contact.interest_level,
+            tags: contact.tags,
+            bot_paused: !contact.bot_paused,
+        }, {
+            preserveScroll: true,
+        });
+    };
 
     const handleEditClick = () => {
         setData({
@@ -625,6 +639,7 @@ export default function ContactsIndex({ contacts }) {
                                     <div className="flex gap-2 mt-auto">
                                         <button 
                                             type="button"
+                                            onClick={() => toggleBotPause(selectedContact)}
                                             className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl border text-xs font-bold transition-all ${
                                             selectedContact.bot_paused
                                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/80 shadow-sm'
