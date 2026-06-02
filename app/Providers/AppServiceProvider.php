@@ -45,5 +45,19 @@ class AppServiceProvider extends ServiceProvider
                 'booking' => $booking,
             ], $contact);
         });
+
+        // Listen for lead score change events to trigger automated campaigns dynamically
+        Event::listen(\App\Events\ContactScoreChanged::class, function (\App\Events\ContactScoreChanged $event) {
+            $contact = $event->contact;
+
+            $automationEngine = app(AutomationEngine::class);
+            $automationEngine->processEvent('lead_score_changed', [
+                'tenant_id' => $contact->tenant_id,
+                'event_type' => 'lead_score_changed',
+                'previous_score' => $event->previousScore,
+                'new_score' => $event->newScore,
+                'interest_level' => $contact->interest_level,
+            ], $contact);
+        });
     }
 }
