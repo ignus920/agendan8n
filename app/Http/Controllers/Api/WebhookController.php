@@ -150,14 +150,18 @@ class WebhookController extends Controller
                 'direction' => $direction,
             ];
 
-            // 4. Run Visual Flow Engine first
-            Log::info("WebhookController: Triggering VisualFlowEngine for event: {$eventType} and contact: {$contact->id}");
-            $visualFlowHandled = $visualFlowEngine->processEvent($eventType, $payload, $contact);
+            // 4. Run Visual Flow Engine first if the bot is active for this contact
+            if ($contact->isBotActive()) {
+                Log::info("WebhookController: Triggering VisualFlowEngine for event: {$eventType} and contact: {$contact->id}");
+                $visualFlowHandled = $visualFlowEngine->processEvent($eventType, $payload, $contact);
 
-            // 5. Run traditional Automation Engine if visual flow didn't handle it
-            if (!$visualFlowHandled) {
-                Log::info("WebhookController: Triggering AutomationEngine for event: {$eventType} and contact: {$contact->id}");
-                $automationEngine->processEvent($eventType, $payload, $contact);
+                // 5. Run traditional Automation Engine if visual flow didn't handle it
+                if (!$visualFlowHandled) {
+                    Log::info("WebhookController: Triggering AutomationEngine for event: {$eventType} and contact: {$contact->id}");
+                    $automationEngine->processEvent($eventType, $payload, $contact);
+                }
+            } else {
+                Log::info("WebhookController: Bot is paused for contact {$contact->id}, skipping automation engines.");
             }
 
             return response()->json([
