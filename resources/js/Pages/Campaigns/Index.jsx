@@ -620,6 +620,7 @@ export default function CampaignsIndex({ campaigns, contacts, whatsmarkCampaigns
                         </div>
                     </div>
                 </div>
+            )}
             {/* View Recipients Modal */}
             {selectedCampaignForRecipients && (
                 <div className="fixed inset-0 z-50 overflow-y-auto">
