@@ -13,7 +13,10 @@ import {
     Calendar,
     Settings,
     Edit2,
-    Shield
+    Shield,
+    Sparkles,
+    Zap,
+    Award
 } from 'lucide-react';
 
 export default function Tenants({ tenants, impersonating, impersonated_tenant }) {
@@ -144,6 +147,67 @@ export default function Tenants({ tenants, impersonating, impersonated_tenant })
                         </div>
                         <div className="p-3 bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 rounded-xl">
                             <Users className="h-6 w-6" />
+                        </div>
+                    </div>
+                </div>
+
+                {/* Informative Help Card for Admins */}
+                <div className="bg-slate-900 border border-slate-800/80 rounded-2xl p-6 shadow-xl relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl -mr-16 -mt-16 pointer-events-none"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl -ml-16 -mb-16 pointer-events-none"></div>
+                    
+                    <div className="relative flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-emerald-400">
+                                <Sparkles className="h-5 w-5" />
+                                <span className="text-xs font-bold uppercase tracking-wider font-mono">Capacidades de la Plataforma</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-white">¿Qué puedes lograr con la plataforma Ticsia?</h3>
+                            <p className="text-sm text-slate-400 max-w-3xl leading-relaxed">
+                                Tu plataforma funciona como un **cerebro comercial autónomo** para cada comercio registrado. Aquí tienes un resumen simple de su potencial:
+                            </p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
+                        <div className="bg-slate-950/40 border border-slate-800/60 p-5 rounded-xl space-y-3 hover:border-slate-700/60 transition-all duration-300">
+                            <div className="h-10 w-10 bg-emerald-500/10 text-emerald-400 rounded-lg flex items-center justify-center border border-emerald-500/20">
+                                <Zap className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-sm font-bold text-white">Captura Autónoma</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Los clientes que escriben a WhatsMark son registrados de forma automática en el embudo comercial, sin que nadie tenga que ingresarlos a mano.
+                            </p>
+                        </div>
+
+                        <div className="bg-slate-950/40 border border-slate-800/60 p-5 rounded-xl space-y-3 hover:border-slate-700/60 transition-all duration-300">
+                            <div className="h-10 w-10 bg-blue-500/10 text-blue-400 rounded-lg flex items-center justify-center border border-blue-500/20">
+                                <Award className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-sm font-bold text-white">Calificación Inteligente</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                El sistema evalúa el interés de cada prospecto mediante puntos (scoring) en tiempo real. Cuando el cliente muestra alto interés, está listo para recibir la oferta.
+                            </p>
+                        </div>
+
+                        <div className="bg-slate-950/40 border border-slate-800/60 p-5 rounded-xl space-y-3 hover:border-slate-700/60 transition-all duration-300">
+                            <div className="h-10 w-10 bg-purple-500/10 text-purple-400 rounded-lg flex items-center justify-center border border-purple-500/20">
+                                <Settings className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-sm font-bold text-white">Flujos Conversacionales</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Cada comercio puede dibujar gráficamente la conversación de su bot: definir qué responder, cuándo dar puntos y qué plantilla de WhatsApp enviar.
+                            </p>
+                        </div>
+
+                        <div className="bg-slate-950/40 border border-slate-800/60 p-5 rounded-xl space-y-3 hover:border-slate-700/60 transition-all duration-300">
+                            <div className="h-10 w-10 bg-cyan-500/10 text-cyan-400 rounded-lg flex items-center justify-center border border-cyan-500/20">
+                                <Shield className="h-5 w-5" />
+                            </div>
+                            <h4 className="text-sm font-bold text-white">Multitenant Seguro</h4>
+                            <p className="text-xs text-slate-400 leading-relaxed">
+                                Cada negocio cuenta con su propia base de datos, flujos de automatización, agendas y número de WhatsApp totalmente aislados y privados.
+                            </p>
                         </div>
                     </div>
                 </div>
